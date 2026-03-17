@@ -1,0 +1,25 @@
+:root{
+  --bg:#0f1720; --card:#111827; --muted:#9ca3af; --accent:#3b82f6;
+  color: #e6eef8; background: linear-gradient(180deg,#071020,#07131a);
+  font-family: Inter, system-ui, Arial, sans-serif;
+}
+body{ margin:0; padding:18px; min-height:100vh; }
+header{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
+h1{ margin:0; font-size:20px; }
+.controls input, .controls button{ margin-left:8px; padding:6px 10px; border-radius:6px; border:1px solid #222; background:#0b1220; color:inherit; }
+.card{ background: rgba(255,255,255,0.03); padding:12px; border-radius:10px; margin-bottom:12px; box-shadow: 0 4px 18px rgba(2,6,23,0.6); }
+#dashboard{ display:flex; gap:12px; flex-wrap:wrap; }
+.counter{ padding:10px 12px; background:rgba(255,255,255,0.02); border-radius:8px; min-width:120px; text-align:center; }
+.counter .num{ font-size:18px; font-weight:700; color:var(--accent); }
+.toolbar{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+.toolbar input, .toolbar select{ padding:8px; border-radius:8px; border:1px solid #222; background:#07131a; color:inherit; }
+table{ width:100%; border-collapse:collapse; font-size:14px; }
+thead th{ text-align:left; padding:8px; color:var(--muted); font-weight:600; }
+tbody td{ padding:8px; border-top:1px solid rgba(255,255,255,0.02); }
+button.action{ padding:6px 8px; border-radius:6px; border:none; cursor:pointer; background:var(--accent); color:#042029; }
+.modal-hidden{ display:none; position:fixed; inset:0; align-items:center; justify-content:center; }
+.modal-visible{ display:flex; background:rgba(0,0,0,0.6); position:fixed; inset:0; align-items:center; justify-content:center; }
+.modal-content{ width:720px; max-width:95%; background:#071620; padding:16px; border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,0.7); }
+.modal-content label{ display:block; margin-bottom:8px; }
+.modal-content input, .modal-content textarea, .modal-content select{ width:100%; padding:8px; border-radius:6px; border:1px solid #222; background:#06121a; color:inherit; }
+.modal-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }

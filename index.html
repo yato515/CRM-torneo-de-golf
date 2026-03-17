@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CRM simple - Gestión Excel</title>
+  <link rel="stylesheet" href="estilo.css" />
+</head>
+<body>
+  <header>
+    <h1>CRM - Patrocinadores</h1>
+    <div class="controls">
+      <input id="file-input" type="file" accept=".xlsx,.xls,.csv" />
+      <button id="btn-export">Exportar a Excel</button>
+      <button id="btn-clear">Limpiar datos (local)</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="dashboard" class="card">
+      <!-- Conteos -->
+    </section>
+
+    <section class="card">
+      <div class="toolbar">
+        <input id="search" placeholder="Buscar por nombre, contacto, email..." />
+        <select id="filter-level">
+          <option value="">Todos los niveles</option>
+          <option>Platino</option>
+          <option>Diamante</option>
+          <option>Oro</option>
+          <option>Menor</option>
+          <option>Pendientes</option>
+          <option>En especie</option>
+        </select>
+      </div>
+
+      <table id="sponsors-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Nivel</th>
+            <th>Contacto</th>
+            <th>Email</th>
+            <th>Teléfono</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- Modal detalle -->
+  <div id="modal" class="modal-hidden">
+    <div class="modal-content">
+      <h2 id="modal-title">Detalle</h2>
+      <form id="detail-form">
+        <input type="hidden" id="detail-id" />
+        <label>Nombre <input id="detail-nombre" /></label>
+        <label>Nivel
+          <select id="detail-nivel">
+            <option>Platino</option>
+            <option>Diamante</option>
+            <option>Oro</option>
+            <option>Menor</option>
+            <option>Pendientes</option>
+            <option>En especie</option>
+          </select>
+        </label>
+        <label>Contacto <input id="detail-contacto" /></label>
+        <label>Email <input id="detail-email" type="email" /></label>
+        <label>Teléfono <input id="detail-telefono" /></label>
+        <label>Monto <input id="detail-monto" type="number" step="0.01" /></label>
+        <label>En especie
+          <select id="detail-en_especie">
+            <option value="no">No</option>
+            <option value="si">Sí</option>
+          </select>
+        </label>
+        <label>Estado <input id="detail-estado" /></label>
+        <label>Notas <textarea id="detail-notas"></textarea></label>
+        <label>Último contacto <input id="detail-ultimo_contacto" type="date" /></label>
+        <label>Fecha próxima acción <input id="detail-fecha_siguiente_accion" type="date" /></label>
+
+        <div class="modal-actions">
+          <button type="button" id="save-detail">Guardar</button>
+          <button type="button" id="close-modal">Cerrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SheetJS -->
+  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
