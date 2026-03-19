@@ -292,6 +292,7 @@ header {
     display: inline-block;
 }
 
+/* Estilos para categorías originales (por si acaso) */
 .badge-oro {
     background: #fef3c7;
     color: #92400e;
@@ -305,6 +306,43 @@ header {
 .badge-bronce {
     background: #fed7aa;
     color: #9a3412;
+}
+
+/* Estilos para nuevas categorías dinámicas */
+.badge-1-diamante,
+.badge-diamante {
+    background: #dbeafe;
+    color: #1e3a8a;
+}
+
+.badge-2-platino,
+.badge-platino {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.badge-3-oro,
+.badge-oro {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-4-plata,
+.badge-plata {
+    background: #e0e7ff;
+    color: #4338ca;
+}
+
+.badge-5-bronce,
+.badge-bronce {
+    background: #fed7aa;
+    color: #9a3412;
+}
+
+/* Estilo por defecto para cualquier otra categoría */
+.badge[class*="badge-"] {
+    background: #f3f4f6;
+    color: #374151;
 }
 
 /* Colores de texto */
