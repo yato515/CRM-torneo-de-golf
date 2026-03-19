@@ -1,6 +1,24 @@
 {
+  "name": "crm-patrocinadores",
+  "version": "2.0.0",
+  "description": "CRM para gestión de patrocinadores y contactos con Supabase",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve",
+    "dev": "python -m http.server 8000"
+  },
+  "keywords": [
+    "crm",
+    "patrocinadores",
+    "supabase",
+    "javascript"
+  ],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
-    "@supabase/supabase-js": "^2.99.2",
+    "@supabase/supabase-js": "^2.99.2"
+  },
+  "devDependencies": {
     "dotenv": "^17.3.1"
   }
 }
