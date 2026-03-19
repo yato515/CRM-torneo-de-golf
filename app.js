@@ -16,6 +16,54 @@ let currentFilter = 'all';
 let currentPatrocinadorId = null;
 
 // ============================================
+// CARGAR CATEGORÍAS DINÁMICAS DESDE LA BD
+// ============================================
+async function cargarCategorias() {
+    try {
+        // Obtener categorías únicas de la base de datos
+        const { data, error } = await supabaseClient
+            .from('patrocinadores_2025')
+            .select('categoria');
+
+        if (error) throw error;
+
+        // Extraer categorías únicas y filtrar nulos
+        const categoriasUnicas = [...new Set(data.map(p => p.categoria))]
+            .filter(cat => cat !== null && cat !== '')
+            .sort();
+
+        // Generar botones dinámicamente
+        const filterButtons = document.getElementById('filterButtons');
+        
+        // Botón "Todos" (siempre primero)
+        filterButtons.innerHTML = `
+            <button class="filter-btn active" onclick="filtrarCategoria('all')">
+                Todos
+            </button>
+        `;
+
+        // Botones por cada categoría
+        categoriasUnicas.forEach(categoria => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn';
+            btn.textContent = categoria;
+            btn.onclick = () => filtrarCategoria(categoria);
+            filterButtons.appendChild(btn);
+        });
+
+        console.log('Categorías cargadas:', categoriasUnicas);
+    } catch (error) {
+        console.error('Error cargando categorías:', error);
+        // Si falla, mostrar al menos el botón "Todos"
+        document.getElementById('filterButtons').innerHTML = `
+            <button class="filter-btn active" onclick="filtrarCategoria('all')">
+                Todos
+            </button>
+        `;
+    }
+}
+
+// ============================================
 // TU FUNCIÓN ORIGINAL: cargarPatrocinadores (MEJORADA)
 // ============================================
 async function cargarPatrocinadores() {
@@ -48,11 +96,17 @@ async function cargarPatrocinadores() {
         data.forEach(p => {
             const contactosCount = contactos.filter(c => c.patrocinador_id === p.id).length;
             
+            // Generar clase CSS simplificada de la categoría (quitar espacios y puntos)
+            const categoriaClass = (p.categoria || '')
+                .toLowerCase()
+                .replace(/\./g, '')
+                .replace(/\s+/g, '-');
+            
             tabla.innerHTML += `
                 <tr>
                     <td>${p.id}</td>
                     <td><strong>${p.patrocinador}</strong></td>
-                    <td><span class="badge badge-${(p.categoria || '').toLowerCase()}">${p.categoria || '-'}</span></td>
+                    <td><span class="badge badge-${categoriaClass}">${p.categoria || '-'}</span></td>
                     <td>${formatCurrency(p.monto_transferencia)}</td>
                     <td>${formatCurrency(p.nota_credito)}</td>
                     <td>${formatCurrency(p.monto_especie)}</td>
@@ -405,7 +459,7 @@ function buscarPatrocinadores() {
         
         const matchesCategory = 
             currentFilter === 'all' || 
-            (p.categoria && p.categoria.toLowerCase() === currentFilter.toLowerCase());
+            p.categoria === currentFilter;  // Comparación exacta
         
         return matchesSearch && matchesCategory;
     });
@@ -442,11 +496,17 @@ function renderBusqueda() {
     filteredPatrocinadores.forEach(p => {
         const contactosCount = contactos.filter(c => c.patrocinador_id === p.id).length;
         
+        // Generar clase CSS simplificada de la categoría (quitar espacios y puntos)
+        const categoriaClass = (p.categoria || '')
+            .toLowerCase()
+            .replace(/\./g, '')
+            .replace(/\s+/g, '-');
+        
         tabla.innerHTML += `
             <tr>
                 <td>${p.id}</td>
                 <td><strong>${p.patrocinador}</strong></td>
-                <td><span class="badge badge-${(p.categoria || '').toLowerCase()}">${p.categoria || '-'}</span></td>
+                <td><span class="badge badge-${categoriaClass}">${p.categoria || '-'}</span></td>
                 <td>${formatCurrency(p.monto_transferencia)}</td>
                 <td>${formatCurrency(p.nota_credito)}</td>
                 <td>${formatCurrency(p.monto_especie)}</td>
@@ -532,4 +592,5 @@ window.onclick = function(event) {
 document.addEventListener('DOMContentLoaded', async () => {
     await cargarPatrocinadores();
     await cargarContactos();
+    await cargarCategorias();  // Cargar botones de categorías dinámicamente
 });
