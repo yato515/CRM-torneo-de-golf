@@ -20,26 +20,54 @@
     </header>
 
     <!-- Estadísticas -->
-    <section class="stats-section">
-        <div class="stat-card">
-            <div class="stat-icon">👥</div>
-            <div class="stat-info">
-                <div class="stat-value" id="totalPatrocinadores">0</div>
-                <div class="stat-label">Patrocinadores</div>
+    <section class="stats-container">
+        <!-- Primera fila: 3 tarjetas -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalPatrocinadores">0</div>
+                    <div class="stat-label">Patrocinadores</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalMonto">$0</div>
+                    <div class="stat-label">Monto Total Pagado</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💳</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalNotaCredito">$0</div>
+                    <div class="stat-label">Nota de Crédito 2025</div>
+                </div>
             </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon">💰</div>
-            <div class="stat-info">
-                <div class="stat-value" id="totalMonto">$0</div>
-                <div class="stat-label">Monto Total</div>
+
+        <!-- Segunda fila: 3 tarjetas -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon">📦</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalEspecie">$0</div>
+                    <div class="stat-label">Especie 2025</div>
+                </div>
             </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon">📞</div>
-            <div class="stat-info">
-                <div class="stat-value" id="totalContactos">0</div>
-                <div class="stat-label">Contactos</div>
+            <div class="stat-card">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalFaltaTransferir">$0</div>
+                    <div class="stat-label">Falta Transferir</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📞</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalContactos">0</div>
+                    <div class="stat-label">Contactos</div>
+                </div>
             </div>
         </div>
     </section>
@@ -51,8 +79,8 @@
                 <input 
                     type="text" 
                     id="searchInput" 
-                    placeholder="🔍 Buscar patrocinador..."
-                    oninput="buscarPatrocinadores()"
+                    placeholder="🔍 Buscar patrocinador, contacto, email o teléfono..."
+                    oninput="buscarPatrocinadoresDebounced()"
                 >
             </div>
             <div class="filter-buttons" id="filterButtons">
@@ -86,27 +114,6 @@
         </div>
     </section>
 
-    <!-- TU TABLA ORIGINAL DE CONTACTOS (MEJORADA) -->
-    <section class="card">
-        <h2>Contactos</h2>
-
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Patrocinador</th>
-                        <th>Nombre</th>
-                        <th>Email</th>
-                        <th>Teléfono</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="contactosBody"></tbody>
-            </table>
-        </div>
-    </section>
-
     <!-- MODAL PATROCINADOR -->
     <div class="modal" id="modalPatrocinador">
         <div class="modal-content">
@@ -124,12 +131,17 @@
 
                 <div class="form-group">
                     <label for="categoria">Categoría *</label>
-                    <select id="categoria" required>
+                    <select id="categoria" required onchange="manejarCambioCategoria()">
                         <option value="">Seleccionar categoría</option>
-                        <option value="Oro">Oro</option>
-                        <option value="Plata">Plata</option>
-                        <option value="Bronce">Bronce</option>
+                        <!-- Las opciones se cargarán dinámicamente desde la base de datos -->
                     </select>
+                </div>
+
+                <!-- Input para nueva categoría (oculto por defecto) -->
+                <div class="form-group" id="nuevaCategoriaGroup" style="display: none;">
+                    <label for="nuevaCategoria">Nueva Categoría *</label>
+                    <input type="text" id="nuevaCategoria" placeholder="Ej: 1. Diamante">
+                    <small style="color: #666; font-size: 0.75rem;">Escribe el nombre de la nueva categoría</small>
                 </div>
 
                 <div class="form-row">
@@ -226,8 +238,7 @@
     <div class="toast" id="toast"></div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 
 </body>
 </html>

@@ -80,13 +80,20 @@ header {
     gap: 1rem;
 }
 
-/* Estadísticas */
-.stats-section {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
+/* Estadísticas - Contenedor principal */
+.stats-container {
     margin: 30px;
     margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Cada fila de estadísticas */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
 }
 
 .stat-card {
@@ -98,6 +105,7 @@ header {
     align-items: center;
     gap: 1rem;
     transition: transform 0.2s;
+    min-height: 100px;
 }
 
 .stat-card:hover {
@@ -106,9 +114,10 @@ header {
 }
 
 .stat-icon {
-    font-size: 2.5rem;
-    width: 60px;
-    height: 60px;
+    font-size: 2rem;
+    width: 50px;
+    height: 50px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -116,16 +125,27 @@ header {
     border-radius: 10px;
 }
 
+.stat-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
 .stat-value {
-    font-size: 1.875rem;
+    font-size: 1.4rem;
     font-weight: 700;
     color: #333;
+    line-height: 1.2;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .stat-label {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     color: #666;
     font-weight: 500;
+    margin-top: 0.25rem;
+    line-height: 1.3;
 }
 
 /* Búsqueda y Filtros */
@@ -584,6 +604,17 @@ form {
     }
 }
 
+/* Responsive */
+@media (max-width: 1024px) {
+    .contactos-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 @media (max-width: 768px) {
     .header-container {
         flex-direction: column;
@@ -594,9 +625,16 @@ form {
         font-size: 1.5rem;
     }
     
-    .stats-section {
-        grid-template-columns: 1fr;
+    .stats-container {
         margin: 20px;
+    }
+    
+    .stats-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
     }
     
     .card {
