@@ -5,7 +5,7 @@ import supabase from './supabaseClient.js';
 
 // Variables globales
 let patrocinadores = [];
-let contactos = [];
+let contactos_patrocinador = [];
 let currentFilter = 'all';
 let filteredPatrocinadores = [];
 let debounceTimer = null;
@@ -55,14 +55,14 @@ async function cargarContactos() {
 
         if (error) throw error;
 
-        contactos = data || [];
-        console.log('Contactos cargados:', contactos.length);
+        contactos_patrocinador = data || [];
+        console.log('Contactos cargados:', contactos_patrocinador.length);
 
         // 🔥 SOLUCIÓN CLAVE
         renderFilteredPatrocinadores();
 
     } catch (error) {
-        console.error('Error cargando contactos:', error);
+        console.error('Error cargando contactos_patrocinador:', error);
     }
 }
 // ============================================
@@ -204,7 +204,7 @@ function aplicarFiltroYBusqueda() {
         filteredPatrocinadores = filteredPatrocinadores.filter(p => 
             p.patrocinador.toLowerCase().includes(searchTerm) ||
             (p.descripcion && p.descripcion.toLowerCase().includes(searchTerm)) ||
-            contactos.some(c => 
+            contactos_patrocinador.some(c => 
                 c.patrocinador_id === p.id && (
                     (c.nombre && c.nombre.toLowerCase().includes(searchTerm)) ||
                     (c.email && c.email.toLowerCase().includes(searchTerm)) ||
@@ -233,11 +233,11 @@ function renderFilteredPatrocinadores() {
     
     const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
     
-    // Pre-calcular contactos
+    // Pre-calcular contactos_patrocinador
     const contactosCount = {};
     const contactosByPatrocinador = {};
     
-    contactos.forEach(c => {
+    contactos_patrocinador.forEach(c => {
         const patId = c.patrocinador_id;
         contactosCount[patId] = (contactosCount[patId] || 0) + 1;
         
@@ -247,7 +247,7 @@ function renderFilteredPatrocinadores() {
         contactosByPatrocinador[patId].push(c);
     });
     
-    // Pre-calcular contactos que coinciden con la búsqueda
+    // Pre-calcular contactos_patrocinador que coinciden con la búsqueda
     const matchingContactsByPatrocinador = {};
     if (searchTerm) {
         Object.keys(contactosByPatrocinador).forEach(patId => {
@@ -301,7 +301,7 @@ function renderFilteredPatrocinadores() {
                 <td>${p.descripcion ? p.descripcion.substring(0, 50) + '...' : '-'}</td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn-action btn-contactos" onclick="abrirContactosModal(${p.id}, '${escapeHtml(p.patrocinador)}')" title="Ver contactos">
+                        <button class="btn-action btn-contactos_patrocinador" onclick="abrirContactosModal(${p.id}, '${escapeHtml(p.patrocinador)}')" title="Ver contactos_patrocinador">
                             📞 <span class="badge-count">${count}</span>
                         </button>
                         <button class="btn-action btn-edit" onclick="editarPatrocinador(${p.id})" title="Editar">
@@ -345,7 +345,7 @@ function buscarPatrocinadores() {
         filteredPatrocinadores = filteredPatrocinadores.filter(p => 
             p.patrocinador.toLowerCase().includes(searchTerm) ||
             (p.descripcion && p.descripcion.toLowerCase().includes(searchTerm)) ||
-            contactos.some(c => 
+            contactos_patrocinador.some(c => 
                 c.patrocinador_id === p.id && (
                     (c.nombre && c.nombre.toLowerCase().includes(searchTerm)) ||
                     (c.email && c.email.toLowerCase().includes(searchTerm)) ||
@@ -474,9 +474,9 @@ async function eliminarPatrocinador(id, nombre) {
     if (!confirm(`¿Estás seguro de que deseas eliminar a "${nombre}"?`)) return;
 
     try {
-        // Primero eliminar contactos asociados
+        // Primero eliminar contactos_patrocinador asociados
         await supabase
-            .from('contactos')
+            .from('contactos_patrocinador')
             .delete()
             .eq('patrocinador_id', id);
 
@@ -507,6 +507,7 @@ async function abrirContactosModal(patrocinadorId, patrocinadorNombre) {
     document.getElementById('modalContactosTitle').textContent = `Contactos - ${patrocinadorNombre}`;
     document.getElementById('formContacto').reset();
     document.getElementById('contactoId').value = '';
+    document.getElementById('btnGuardarContacto').textContent = '➕ Agregar Contacto';
 
     await cargarContactosPatrocinador(patrocinadorId);
     document.getElementById('modalContactos').style.display = 'flex';
@@ -518,10 +519,10 @@ function cerrarContactosModal() {
 
 async function cargarContactosPatrocinador(patrocinadorId) {
     const listaContactos = document.getElementById('listaContactos');
-    const contactosPatrocinador = contactos.filter(c => c.patrocinador_id === patrocinadorId);
+    const contactosPatrocinador = contactos_patrocinador.filter(c => c.patrocinador_id === patrocinadorId);
 
     if (contactosPatrocinador.length === 0) {
-        listaContactos.innerHTML = '<p style="color: #999; text-align: center;">No hay contactos registrados</p>';
+        listaContactos.innerHTML = '<p style="color: #999; text-align: center;">No hay contactos_patrocinador registrados</p>';
         return;
     }
 
@@ -583,23 +584,27 @@ async function guardarContacto(event) {
         // 🧼 Limpiar formulario
         document.getElementById('formContacto').reset();
         document.getElementById('contactoId').value = '';
-
+        document.getElementById('btnGuardarContacto').textContent = '➕ Agregar Contacto';
     } catch (error) {
         console.error('Error guardando contacto:', error);
     }
 }
 
 async function editarContacto(contactoId) {
-    const contacto = contactos.find(c => c.id === contactoId);
+    const contacto = contactos_patrocinador.find(c => c.id === contactoId);
     if (!contacto) return;
 
     document.getElementById('contactoId').value = contacto.id;
     document.getElementById('contactoNombre').value = contacto.nombre;
     document.getElementById('contactoEmail').value = contacto.email || '';
     document.getElementById('contactoTelefono').value = contacto.telefono || '';
+
+    //boton actualizar
+    document.getElementById('btnGuardarContacto').textContent = 'Actualizar Contacto';
     
     // Scroll al formulario
     document.querySelector('.contacto-form-section').scrollIntoView({ behavior: 'smooth' });
+    
 }
 
 async function eliminarContacto(contactoId) {
@@ -634,7 +639,7 @@ function actualizarEstadisticas() {
     const totalNotaCredito = patrocinadores.reduce((sum, p) => sum + (p.nota_credito || 0), 0);
     const totalEspecie = patrocinadores.reduce((sum, p) => sum + (p.monto_especie || 0), 0);
     const totalFaltaTransferir = patrocinadores.reduce((sum, p) => sum + (p.falta_transferir || 0), 0);
-    const totalContactos = contactos.length;
+    const totalContactos = contactos_patrocinador.length;
 
     document.getElementById('totalPatrocinadores').textContent = totalPatrocinadores;
     document.getElementById('totalMonto').textContent = formatCurrency(totalMonto);
