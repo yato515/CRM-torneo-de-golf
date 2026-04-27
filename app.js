@@ -3,10 +3,10 @@
 // ============================================
 import supabase from './supabaseClient.js';
 
-// Variables globales
 let patrocinadores = [];
 let contactos_patrocinador = [];
-let currentFilter = 'all';
+let categorias = [];
+let currentFilter = 'all'; // 'all' o categoria.id (número)
 let filteredPatrocinadores = [];
 let debounceTimer = null;
 
@@ -14,28 +14,124 @@ let debounceTimer = null;
 // INICIALIZAR LA APLICACIÓN
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Iniciando aplicación...');
-    await cargarPatrocinadores();
-    await cargarContactos();
+    await cargarPatrocinadores(); // 🔥 IMPORTANTE
     await cargarCategorias();
+    await cargarContactos();
     actualizarEstadisticas();
     renderFilteredPatrocinadores();
+
+    // Aplicar formateo de moneda a los campos del modal
+    const camposMoneda = [
+        'montoTransferencia',
+        'notaCredito',
+        'montoEspecie',
+        'montoPagadoTotal',
+        'faltaTransferir'
+    ];
+
+    camposMoneda.forEach(id => {
+        const input = document.getElementById(id);
+        if (!input) return;
+
+        // Formato mientras escribe
+        input.addEventListener('input', () => formatearInputMoneda(input));
+
+        // Al salir del campo: formato completo con 2 decimales
+        input.addEventListener('blur', () => {
+            const num = parsearMoneda(input.value);
+            input.value = num === 0 ? '' : formatearMonedaCompleta(num);
+        });
+
+        // Al entrar al campo: mostrar solo el número para facilitar edición
+        input.addEventListener('focus', () => {
+            const num = parsearMoneda(input.value);
+            input.value = num === 0 ? '' : num.toString();
+        });
+    });
 });
 
 // ============================================
-// CARGAR PATROCINADORES DESDE LA BD
+// CARGAR CATEGORÍAS DESDE LA TABLA categorias
+// ============================================
+async function cargarCategorias() {
+    try {
+        const { data, error } = await supabase
+            .from('categorias')
+            .select('*')
+            .order('id', { ascending: true });
+
+        if (error) throw error;
+
+        categorias = data || [];
+        cargarOpcionesCategoria();
+        renderBotonesCategorias();
+
+        console.log('Categorías cargadas:', categorias.length);
+    } catch (error) {
+        console.error('Error cargando categorías:', error);
+        mostrarToast('Error al cargar categorías', 'error');
+    }
+}
+
+function cargarOpcionesCategoria() {
+    const select = document.getElementById('categoria');
+    if (!select) return;
+
+    select.innerHTML = `<option value="">Seleccionar categoría</option>`;
+
+    categorias.forEach(c => {
+        const option = document.createElement('option');
+        option.value = c.id;          // FK numérico
+        option.textContent = c.nombre;
+        select.appendChild(option);
+    });
+}
+
+function renderBotonesCategorias() {
+    const container = document.getElementById('filterButtons');
+
+    // total general
+    const total = patrocinadores.length;
+
+    container.innerHTML = `
+        <button class="filter-btn active" onclick="filtrarCategoria('all')">
+            Todos <span class="badge-count">${total}</span>
+        </button>
+    `;
+
+    categorias.forEach(c => {
+        // contar patrocinadores por categoria
+        const count = patrocinadores.filter(p => p.categoria_id === c.id).length;
+
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn';
+        btn.innerHTML = `
+            ${c.nombre}
+            <span class="badge-count">${count}</span>
+        `;
+        btn.onclick = () => filtrarCategoria(c.id);
+
+        container.appendChild(btn);
+    });
+}
+// ============================================
+// CARGAR PATROCINADORES CON JOIN A categorias
 // ============================================
 async function cargarPatrocinadores() {
     try {
         const { data, error } = await supabase
             .from('patrocinadores_2025')
-            .select('*')
+            .select(`
+                *,
+                categorias ( id, nombre )
+            `)
             .order('id', { ascending: true });
 
         if (error) throw error;
 
         patrocinadores = data || [];
         filteredPatrocinadores = [...patrocinadores];
+
         console.log('Patrocinadores cargados:', patrocinadores.length);
     } catch (error) {
         console.error('Error cargando patrocinadores:', error);
@@ -44,7 +140,7 @@ async function cargarPatrocinadores() {
 }
 
 // ============================================
-// CARGAR CONTACTOS DESDE LA BD
+// CARGAR CONTACTOS
 // ============================================
 async function cargarContactos() {
     try {
@@ -58,153 +154,60 @@ async function cargarContactos() {
         contactos_patrocinador = data || [];
         console.log('Contactos cargados:', contactos_patrocinador.length);
 
-        // 🔥 SOLUCIÓN CLAVE
         renderFilteredPatrocinadores();
-
     } catch (error) {
-        console.error('Error cargando contactos_patrocinador:', error);
+        console.error('Error cargando contactos:', error);
     }
-}
-// ============================================
-// CARGAR CATEGORÍAS DINÁMICAS DESDE LA BD
-// ============================================
-async function cargarCategorias() {
-    try {
-        // Obtener categorías únicas de la base de datos
-        const { data, error } = await supabase
-            .from('patrocinadores_2025')
-            .select('categoria');
-
-        if (error) throw error;
-
-        // Extraer categorías únicas y filtrar nulos
-        const categoriasUnicas = [...new Set(data.map(p => p.categoria))]
-            .filter(cat => cat !== null && cat !== '')
-            .sort();
-
-        // Generar botones dinámicamente
-        const filterButtons = document.getElementById('filterButtons');
-        
-        // Calcular total de PATROCINADORES para el botón "Todos"
-        const totalPatrocinadores = patrocinadores.length;
-        
-        // Botón "Todos" (siempre primero) con contador de PATROCINADORES
-        filterButtons.innerHTML = `
-            <button class="filter-btn active" data-category="all" onclick="filtrarCategoria(event)">
-                Todos
-                <span class="category-contact-count" style="background: #2563eb; color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.75rem; margin-left: 8px; font-weight: 600;">${totalPatrocinadores}</span>
-            </button>
-        `;
-
-        // Botones por cada categoría
-        categoriasUnicas.forEach(categoria => {
-            const btn = document.createElement('button');
-            btn.className = 'filter-btn';
-            btn.textContent = categoria;
-            btn.setAttribute('data-category', categoria);
-            btn.onclick = (e) => filtrarCategoria(e);
-            filterButtons.appendChild(btn);
-        });
-
-        // NUEVO: Cargar opciones del select dinámicamente
-        cargarOpcionesCategoria(categoriasUnicas);
-
-        console.log('Categorías cargadas:', categoriasUnicas);
-    } catch (error) {
-        console.error('Error cargando categorías:', error);
-        // Si falla, mostrar al menos el botón "Todos"
-        const totalPatrocinadores = patrocinadores.length;
-        document.getElementById('filterButtons').innerHTML = `
-            <button class="filter-btn active" data-category="all" onclick="filtrarCategoria(event)">
-                Todos
-                <span class="category-contact-count" style="background: #2563eb; color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.75rem; margin-left: 8px; font-weight: 600;">${totalPatrocinadores}</span>
-            </button>
-        `;
-    }
-}
-
-// ============================================
-// CARGAR OPCIONES DE CATEGORÍA EN EL SELECT
-// ============================================
-function cargarOpcionesCategoria(categorias) {
-    const selectCategoria = document.getElementById('categoria');
-    if (!selectCategoria) return;
-
-    // Mantener la opción por defecto
-    const defaultOption = selectCategoria.querySelector('option[value=""]');
-    selectCategoria.innerHTML = '';
-    
-    if (defaultOption) {
-        selectCategoria.appendChild(defaultOption);
-    } else {
-        const option = document.createElement('option');
-        option.value = '';
-        option.textContent = 'Seleccionar categoría';
-        selectCategoria.appendChild(option);
-    }
-
-    // Agregar opciones de categorías existentes
-    categorias.forEach(categoria => {
-        const option = document.createElement('option');
-        option.value = categoria;
-        option.textContent = categoria;
-        selectCategoria.appendChild(option);
-    });
-
-    // Agregar opción para nueva categoría
-    const optionNueva = document.createElement('option');
-    optionNueva.value = '__nueva__';
-    optionNueva.textContent = '➕ Crear nueva categoría';
-    selectCategoria.appendChild(optionNueva);
 }
 
 // ============================================
 // BÚSQUEDA Y FILTROS
 // ============================================
-function filtrarCategoria(event) {
-    const button = event.currentTarget || event.target;
-    const categoria = button.getAttribute('data-category') || 'all';
-    
-    currentFilter = categoria;
-    
-    // Filtrar los patrocinadores
-    if (currentFilter !== 'all') {
-        filteredPatrocinadores = patrocinadores.filter(p => p.categoria === currentFilter);
-    } else {
+function filtrarCategoria(categoriaId) {
+    currentFilter = categoriaId;
+
+    if (categoriaId === 'all') {
         filteredPatrocinadores = [...patrocinadores];
+    } else {
+        filteredPatrocinadores = patrocinadores.filter(p => 
+            Number(p.categoria_id) === Number(categoriaId)
+        );
     }
-    
-    // Actualizar la clase active de los botones
+
+    // actualizar botones activos (visual)
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    button.classList.add('active');
-    
-    // Aplicar búsqueda si hay texto
-    const searchTerm = document.getElementById('searchInput').value;
-    if (searchTerm && searchTerm.trim()) {
-        aplicarFiltroYBusqueda();
-    } else {
-        renderFilteredPatrocinadores();
-    }
+
+    // marcar el activo
+    const botones = document.querySelectorAll('.filter-btn');
+    botones.forEach(btn => {
+        if (
+            (categoriaId === 'all' && btn.textContent.includes('Todos')) ||
+            btn.onclick?.toString().includes(categoriaId)
+        ) {
+            btn.classList.add('active');
+        }
+    });
+
+    renderFilteredPatrocinadores();
 }
 
 function aplicarFiltroYBusqueda() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-    
-    // Aplicar filtro de categoría
+
     if (currentFilter !== 'all') {
-        filteredPatrocinadores = patrocinadores.filter(p => p.categoria === currentFilter);
+        filteredPatrocinadores = patrocinadores.filter(p => p.categoria_id === currentFilter);
     } else {
         filteredPatrocinadores = [...patrocinadores];
     }
-    
-    // Aplicar búsqueda por texto
+
     if (searchTerm) {
-        filteredPatrocinadores = filteredPatrocinadores.filter(p => 
+        filteredPatrocinadores = filteredPatrocinadores.filter(p =>
             p.patrocinador.toLowerCase().includes(searchTerm) ||
             (p.descripcion && p.descripcion.toLowerCase().includes(searchTerm)) ||
-            contactos_patrocinador.some(c => 
+            (p.categorias?.nombre && p.categorias.nombre.toLowerCase().includes(searchTerm)) ||
+            contactos_patrocinador.some(c =>
                 c.patrocinador_id === p.id && (
                     (c.nombre && c.nombre.toLowerCase().includes(searchTerm)) ||
                     (c.email && c.email.toLowerCase().includes(searchTerm)) ||
@@ -213,110 +216,8 @@ function aplicarFiltroYBusqueda() {
             )
         );
     }
-    
-    renderFilteredPatrocinadores();
-}
 
-function renderFilteredPatrocinadores() {
-    const tabla = document.getElementById("patrocinadoresBody");
-    
-    if (filteredPatrocinadores.length === 0) {
-        tabla.innerHTML = `
-            <tr>
-                <td colspan="10" style="text-align: center; padding: 2rem; color: #64748b;">
-                    No se encontraron resultados
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-    
-    // Pre-calcular contactos_patrocinador
-    const contactosCount = {};
-    const contactosByPatrocinador = {};
-    
-    contactos_patrocinador.forEach(c => {
-        const patId = c.patrocinador_id;
-        contactosCount[patId] = (contactosCount[patId] || 0) + 1;
-        
-        if (!contactosByPatrocinador[patId]) {
-            contactosByPatrocinador[patId] = [];
-        }
-        contactosByPatrocinador[patId].push(c);
-    });
-    
-    // Pre-calcular contactos_patrocinador que coinciden con la búsqueda
-    const matchingContactsByPatrocinador = {};
-    if (searchTerm) {
-        Object.keys(contactosByPatrocinador).forEach(patId => {
-            const matchedContact = contactosByPatrocinador[patId].find(c => 
-                (c.nombre && c.nombre.toLowerCase().includes(searchTerm)) ||
-                (c.email && c.email.toLowerCase().includes(searchTerm)) ||
-                (c.telefono && c.telefono.toString().toLowerCase().includes(searchTerm))
-            );
-            if (matchedContact) {
-                matchingContactsByPatrocinador[patId] = matchedContact;
-            }
-        });
-    }
-    
-    const rows = filteredPatrocinadores.map(p => {
-        const count = contactosCount[p.id] || 0;
-        
-        let foundByContact = false;
-        let matchingContact = '';
-        
-        if (searchTerm && matchingContactsByPatrocinador[p.id]) {
-            const matchesPatrocinador = 
-                p.patrocinador.toLowerCase().includes(searchTerm) ||
-                (p.descripcion && p.descripcion.toLowerCase().includes(searchTerm));
-            
-            if (!matchesPatrocinador) {
-                foundByContact = true;
-                const mc = matchingContactsByPatrocinador[p.id];
-                matchingContact = mc.nombre || mc.email || mc.telefono;
-            }
-        }
-        
-        const categoriaClass = (p.categoria || '')
-            .toLowerCase()
-            .replace(/\./g, '')
-            .replace(/\s+/g, '-');
-        
-        const contactIndicator = foundByContact ? 
-            `<br><small style="color: #2563eb; font-weight: 500;">📞 Encontrado por contacto: ${escapeHtml(matchingContact)}</small>` : '';
-        
-        return `
-            <tr>
-                <td>${p.id}</td>
-                <td><strong>${p.patrocinador}</strong>${contactIndicator}</td>
-                <td><span class="badge badge-${categoriaClass}">${p.categoria || '-'}</span></td>
-                <td>${formatCurrency(p.monto_transferencia)}</td>
-                <td>${formatCurrency(p.nota_credito)}</td>
-                <td>${formatCurrency(p.monto_especie)}</td>
-                <td><strong>${formatCurrency(p.monto_pagado_total)}</strong></td>
-                <td class="${p.falta_transferir > 0 ? 'text-danger' : 'text-success'}">${formatCurrency(p.falta_transferir)}</td>
-                <td>${p.descripcion ? p.descripcion.substring(0, 50) + '...' : '-'}</td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="btn-action btn-contactos_patrocinador" onclick="abrirContactosModal(${p.id}, '${escapeHtml(p.patrocinador)}')" title="Ver contactos_patrocinador">
-                            📞 <span class="badge-count">${count}</span>
-                        </button>
-                        <button class="btn-action btn-edit" onclick="editarPatrocinador(${p.id})" title="Editar">
-                            ✏️
-                        </button>
-                        <button class="btn-action btn-delete" onclick="eliminarPatrocinador(${p.id}, '${escapeHtml(p.patrocinador)}')" title="Eliminar">
-                            🗑️
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    });
-    
-    tabla.innerHTML = rows.join('');
+    renderFilteredPatrocinadores();
 }
 
 function buscarPatrocinadoresDebounced() {
@@ -332,20 +233,17 @@ function buscarPatrocinadoresDebounced() {
 
 function buscarPatrocinadores() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-    
-    // Aplicar filtro de categoría si está activo
-    if (currentFilter !== 'all') {
-        filteredPatrocinadores = patrocinadores.filter(p => p.categoria === currentFilter);
-    } else {
-        filteredPatrocinadores = [...patrocinadores];
-    }
-    
-    // Aplicar búsqueda por texto
+
+    filteredPatrocinadores = currentFilter !== 'all'
+        ? patrocinadores.filter(p => p.categoria_id === currentFilter)
+        : [...patrocinadores];
+
     if (searchTerm) {
-        filteredPatrocinadores = filteredPatrocinadores.filter(p => 
+        filteredPatrocinadores = filteredPatrocinadores.filter(p =>
             p.patrocinador.toLowerCase().includes(searchTerm) ||
             (p.descripcion && p.descripcion.toLowerCase().includes(searchTerm)) ||
-            contactos_patrocinador.some(c => 
+            (p.categorias?.nombre && p.categorias.nombre.toLowerCase().includes(searchTerm)) ||
+            contactos_patrocinador.some(c =>
                 c.patrocinador_id === p.id && (
                     (c.nombre && c.nombre.toLowerCase().includes(searchTerm)) ||
                     (c.email && c.email.toLowerCase().includes(searchTerm)) ||
@@ -354,8 +252,120 @@ function buscarPatrocinadores() {
             )
         );
     }
-    
+
     renderFilteredPatrocinadores();
+}
+
+// ============================================
+// RENDER DE LA TABLA
+// ============================================
+function renderFilteredPatrocinadores() {
+    const tabla = document.getElementById('patrocinadoresBody');
+
+    if (filteredPatrocinadores.length === 0) {
+        tabla.innerHTML = `
+            <tr>
+                <td colspan="10" style="text-align:center;padding:2rem;color:#64748b;">
+                    No se encontraron resultados
+                </td>
+            </tr>`;
+        return;
+    }
+
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+
+    const contactosCount = {};
+    const contactosByPatrocinador = {};
+    contactos_patrocinador.forEach(c => {
+        const pid = c.patrocinador_id;
+        contactosCount[pid] = (contactosCount[pid] || 0) + 1;
+        if (!contactosByPatrocinador[pid]) contactosByPatrocinador[pid] = [];
+        contactosByPatrocinador[pid].push(c);
+    });
+
+    const matchingContactsByPatrocinador = {};
+    if (searchTerm) {
+        Object.keys(contactosByPatrocinador).forEach(patId => {
+            const match = contactosByPatrocinador[patId].find(c =>
+                (c.nombre && c.nombre.toLowerCase().includes(searchTerm)) ||
+                (c.email && c.email.toLowerCase().includes(searchTerm)) ||
+                (c.telefono && c.telefono.toString().toLowerCase().includes(searchTerm))
+            );
+            if (match) matchingContactsByPatrocinador[patId] = match;
+        });
+    }
+
+    const rows = filteredPatrocinadores.map(p => {
+        const count = contactosCount[p.id] || 0;
+        const nombreCategoria = p.categorias?.nombre || '-';
+
+        // Clase CSS del badge basada en el nombre de la categoría
+        const categoriaClass = nombreCategoria
+            .toLowerCase()
+            .replace(/\./g, '')
+            .replace(/\s+/g, '-');
+
+        let foundByContact = false;
+        let matchingContact = '';
+
+        if (searchTerm && matchingContactsByPatrocinador[p.id]) {
+            const matchesPatrocinador =
+                p.patrocinador.toLowerCase().includes(searchTerm) ||
+                (p.descripcion && p.descripcion.toLowerCase().includes(searchTerm));
+
+            if (!matchesPatrocinador) {
+                foundByContact = true;
+                const mc = matchingContactsByPatrocinador[p.id];
+                matchingContact = mc.nombre || mc.email || mc.telefono;
+            }
+        }
+
+        const contactIndicator = foundByContact
+            ? `<br><small style="color:#2563eb;font-weight:500;">📞 Encontrado por contacto: ${escapeHtml(matchingContact)}</small>`
+            : '';
+
+        return `
+            <tr>
+                <td>${p.id}</td>
+                <td><strong>${escapeHtml(p.patrocinador)}</strong>${contactIndicator}</td>
+                <td><span class="badge badge-${categoriaClass}">${escapeHtml(nombreCategoria)}</span></td>
+                <td>${formatCurrency(p.monto_transferencia)}</td>
+                <td>${formatCurrency(p.nota_credito)}</td>
+                <td>
+                    ${p.descripcion_especie
+                        ? `<span
+                                style="cursor:pointer;color:#2563eb;text-decoration:underline;"
+                                title="Ver descripción de especie"
+                                onclick="abrirModalEspecie('${escapeHtml(p.descripcion_especie).replace(/'/g, '&#39;')}', '${escapeHtml(p.patrocinador)}')"
+                           >${formatCurrency(p.monto_especie)} 📦</span>`
+                        : formatCurrency(p.monto_especie)
+                    }
+                </td>
+                <td><strong>${formatCurrency(p.monto_pagado_total)}</strong></td>
+                <td class="${p.falta_transferir > 0 ? 'text-danger' : 'text-success'}">${formatCurrency(p.falta_transferir)}</td>
+                <td>
+                    ${p.descripcion
+                        ? `<span
+                                style="cursor:pointer;color:#2563eb;text-decoration:underline;"
+                                title="Ver descripción completa"
+                                onclick="abrirModalEspecie('${escapeHtml(p.descripcion).replace(/'/g, '&#39;')}', '${escapeHtml(p.patrocinador)} — Descripción')"
+                           >${escapeHtml(p.descripcion.substring(0, 50))}${p.descripcion.length > 50 ? '…' : ''}</span>`
+                        : '-'
+                    }
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-contactos_patrocinador" onclick="abrirContactosModal(${p.id}, '${escapeHtml(p.patrocinador)}')" title="Ver contactos">
+                            📞 <span class="badge-count">${count}</span>
+                        </button>
+                        <button class="btn-action btn-edit" onclick="editarPatrocinador(${p.id})" title="Editar">✏️</button>
+                        <button class="btn-action btn-delete" onclick="eliminarPatrocinador(${p.id}, '${escapeHtml(p.patrocinador)}')" title="Eliminar">🗑️</button>
+                    </div>
+                </td>
+            </tr>`;
+    });
+
+    tabla.innerHTML = rows.join('');
 }
 
 // ============================================
@@ -365,7 +375,10 @@ function abrirModalPatrocinador() {
     document.getElementById('patrocinadorId').value = '';
     document.getElementById('formPatrocinador').reset();
     document.getElementById('modalPatrocinadorTitle').textContent = 'Nuevo Patrocinador';
-    document.getElementById('nuevaCategoriaGroup').style.display = 'none';
+    // Resetear toggle descripción especie
+    document.getElementById('toggleEspecie').checked = false;
+    document.getElementById('descripcionEspecieWrapper').style.display = 'none';
+    document.getElementById('descripcionEspecie').value = '';
     document.getElementById('modalPatrocinador').style.display = 'flex';
 }
 
@@ -373,78 +386,60 @@ function cerrarModalPatrocinador() {
     document.getElementById('modalPatrocinador').style.display = 'none';
 }
 
-function manejarCambioCategoria() {
-    const selectCategoria = document.getElementById('categoria');
-    const nuevaCategoriaGroup = document.getElementById('nuevaCategoriaGroup');
-    
-    if (selectCategoria.value === '__nueva__') {
-        nuevaCategoriaGroup.style.display = 'block';
-    } else {
-        nuevaCategoriaGroup.style.display = 'none';
-    }
-}
-
 async function guardarPatrocinador(event) {
     event.preventDefault();
 
     const id = document.getElementById('patrocinadorId').value;
-    const patrocinador = document.getElementById('patrocinador').value;
-    const categoria = document.getElementById('categoria').value === '__nueva__' 
-        ? document.getElementById('nuevaCategoria').value 
-        : document.getElementById('categoria').value;
-    const montoTransferencia = parseFloat(document.getElementById('montoTransferencia').value) || 0;
-    const notaCredito = parseFloat(document.getElementById('notaCredito').value) || 0;
-    const montoEspecie = parseFloat(document.getElementById('montoEspecie').value) || 0;
-    const montoPagadoTotal = parseFloat(document.getElementById('montoPagadoTotal').value) || 0;
-    const faltaTransferir = parseFloat(document.getElementById('faltaTransferir').value) || 0;
-    const descripcion = document.getElementById('descripcion').value;
+    const patrocinador = document.getElementById('patrocinador').value.trim();
+    const categoriaId = parseInt(document.getElementById('categoria').value);
 
-    if (!patrocinador.trim()) {
+    if (!patrocinador) {
         mostrarToast('El nombre del patrocinador es requerido', 'error');
         return;
     }
 
-    if (!categoria || categoria === '__nueva__') {
-        mostrarToast('Selecciona o crea una categoría', 'error');
+    if (isNaN(categoriaId)) { // 🔥 cambio aquí
+        mostrarToast('Selecciona una categoría', 'error');
         return;
     }
 
-    try {
-        const datos = {
-            patrocinador,
-            categoria,
-            monto_transferencia: montoTransferencia,
-            nota_credito: notaCredito,
-            monto_especie: montoEspecie,
-            monto_pagado_total: montoPagadoTotal,
-            falta_transferir: faltaTransferir,
-            descripcion
-        };
+    const datos = {
+        patrocinador,
+        categoria_id: Number(categoriaId), // 🔥 más robusto
+        monto_transferencia: parsearMoneda(document.getElementById('montoTransferencia').value),
+        nota_credito:        parsearMoneda(document.getElementById('notaCredito').value),
+        monto_especie:       parsearMoneda(document.getElementById('montoEspecie').value),
+        monto_pagado_total:  parsearMoneda(document.getElementById('montoPagadoTotal').value),
+        falta_transferir:    parsearMoneda(document.getElementById('faltaTransferir').value),
+        descripcion:         document.getElementById('descripcion').value || null,
+        descripcion_especie: document.getElementById('toggleEspecie').checked
+            ? document.getElementById('descripcionEspecie').value || null
+            : null,
+    };
 
+    try {
         if (id) {
-            // Actualizar
             const { error } = await supabase
                 .from('patrocinadores_2025')
                 .update(datos)
                 .eq('id', id);
-
             if (error) throw error;
             mostrarToast('Patrocinador actualizado correctamente', 'success');
         } else {
-            // Crear
             const { error } = await supabase
                 .from('patrocinadores_2025')
                 .insert([datos]);
-
             if (error) throw error;
             mostrarToast('Patrocinador creado correctamente', 'success');
         }
 
         cerrarModalPatrocinador();
+
         await cargarPatrocinadores();
-        await cargarCategorias();
+        await cargarCategorias(); // 🔥 clave
         actualizarEstadisticas();
         renderFilteredPatrocinadores();
+
     } catch (error) {
         console.error('Error guardando patrocinador:', error);
         mostrarToast('Error al guardar patrocinador', 'error');
@@ -452,19 +447,24 @@ async function guardarPatrocinador(event) {
 }
 
 async function editarPatrocinador(id) {
-    const patrocinador = patrocinadores.find(p => p.id === id);
-    if (!patrocinador) return;
+    const p = patrocinadores.find(p => p.id === id);
+    if (!p) return;
 
-    document.getElementById('patrocinadorId').value = patrocinador.id;
-    document.getElementById('patrocinador').value = patrocinador.patrocinador;
-    document.getElementById('categoria').value = patrocinador.categoria;
-    document.getElementById('montoTransferencia').value = patrocinador.monto_transferencia || 0;
-    document.getElementById('notaCredito').value = patrocinador.nota_credito || 0;
-    document.getElementById('montoEspecie').value = patrocinador.monto_especie || 0;
-    document.getElementById('montoPagadoTotal').value = patrocinador.monto_pagado_total || 0;
-    document.getElementById('faltaTransferir').value = patrocinador.falta_transferir || 0;
-    document.getElementById('descripcion').value = patrocinador.descripcion || '';
-    document.getElementById('nuevaCategoriaGroup').style.display = 'none';
+    document.getElementById('patrocinadorId').value = p.id;
+    document.getElementById('patrocinador').value = p.patrocinador;
+    document.getElementById('categoria').value = p.categoria_id;     // ← FK
+    document.getElementById('montoTransferencia').value = p.monto_transferencia ? formatearMonedaCompleta(p.monto_transferencia) : '';
+    document.getElementById('notaCredito').value        = p.nota_credito        ? formatearMonedaCompleta(p.nota_credito)        : '';
+    document.getElementById('montoEspecie').value       = p.monto_especie       ? formatearMonedaCompleta(p.monto_especie)       : '';
+    document.getElementById('montoPagadoTotal').value   = p.monto_pagado_total  ? formatearMonedaCompleta(p.monto_pagado_total)  : '';
+    document.getElementById('faltaTransferir').value    = p.falta_transferir    ? formatearMonedaCompleta(p.falta_transferir)    : '';
+    document.getElementById('descripcion').value = p.descripcion || '';
+
+    // Cargar toggle y descripción de especie
+    const tieneDescEspecie = !!p.descripcion_especie;
+    document.getElementById('toggleEspecie').checked = tieneDescEspecie;
+    document.getElementById('descripcionEspecieWrapper').style.display = tieneDescEspecie ? 'block' : 'none';
+    document.getElementById('descripcionEspecie').value = p.descripcion_especie || '';
 
     document.getElementById('modalPatrocinadorTitle').textContent = 'Editar Patrocinador';
     document.getElementById('modalPatrocinador').style.display = 'flex';
@@ -474,23 +474,18 @@ async function eliminarPatrocinador(id, nombre) {
     if (!confirm(`¿Estás seguro de que deseas eliminar a "${nombre}"?`)) return;
 
     try {
-        // Primero eliminar contactos_patrocinador asociados
-        await supabase
-            .from('contactos_patrocinador')
-            .delete()
-            .eq('patrocinador_id', id);
+        await supabase.from('contactos_patrocinador').delete().eq('patrocinador_id', id);
 
-        // Luego eliminar patrocinador
         const { error } = await supabase
             .from('patrocinadores_2025')
             .delete()
             .eq('id', id);
-
         if (error) throw error;
+
         mostrarToast('Patrocinador eliminado correctamente', 'success');
         await cargarPatrocinadores();
+        renderBotonesCategorias();
         await cargarContactos();
-        await cargarCategorias();
         actualizarEstadisticas();
         renderFilteredPatrocinadores();
     } catch (error) {
@@ -500,7 +495,76 @@ async function eliminarPatrocinador(id, nombre) {
 }
 
 // ============================================
-// CRUD: CONTACTOS
+// CRUD: CATEGORÍAS (modal opcional)
+// ============================================
+function abrirModalCategorias() {
+    renderListaCategorias();
+    document.getElementById('modalCategorias').style.display = 'flex';
+}
+
+function cerrarModalCategorias() {
+    document.getElementById('modalCategorias').style.display = 'none';
+    document.getElementById('nuevaCategoriaInput').value = '';
+}
+
+function renderListaCategorias() {
+    const lista = document.getElementById('listaCategorias');
+    if (categorias.length === 0) {
+        lista.innerHTML = '<p style="color:#999;text-align:center;">Sin categorías registradas</p>';
+        return;
+    }
+    lista.innerHTML = categorias.map(c => `
+        <div class="contacto-card">
+            <div class="contacto-info"><strong>${escapeHtml(c.nombre)}</strong></div>
+            <div class="contacto-actions">
+                <button class="btn-action btn-delete" onclick="eliminarCategoria(${c.id})" title="Eliminar">🗑️</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function crearCategoria() {
+    const input = document.getElementById('nuevaCategoriaInput');
+    const nombre = input.value.trim();
+    if (!nombre) { mostrarToast('Escribe un nombre de categoría', 'error'); return; }
+
+    try {
+        const { error } = await supabase.from('categorias').insert([{ nombre }]);
+        if (error) throw error;
+
+        mostrarToast('Categoría creada', 'success');
+        input.value = '';
+        await cargarCategorias();
+        renderListaCategorias();
+    } catch (error) {
+        console.error('Error creando categoría:', error);
+        mostrarToast('Error al crear categoría', 'error');
+    }
+}
+
+async function eliminarCategoria(id) {
+    const enUso = patrocinadores.some(p => p.categoria_id === id);
+    if (enUso) {
+        mostrarToast('No puedes eliminar una categoría en uso', 'error');
+        return;
+    }
+    if (!confirm('¿Eliminar esta categoría?')) return;
+
+    try {
+        const { error } = await supabase.from('categorias').delete().eq('id', id);
+        if (error) throw error;
+
+        mostrarToast('Categoría eliminada', 'success');
+        await cargarCategorias();
+        renderListaCategorias();
+    } catch (error) {
+        console.error('Error eliminando categoría:', error);
+        mostrarToast('Error al eliminar categoría', 'error');
+    }
+}
+
+// ============================================
+// CRUD: CONTACTOS (sin cambios)
 // ============================================
 async function abrirContactosModal(patrocinadorId, patrocinadorNombre) {
     document.getElementById('contactoPatrocinadorId').value = patrocinadorId;
@@ -518,23 +582,23 @@ function cerrarContactosModal() {
 }
 
 async function cargarContactosPatrocinador(patrocinadorId) {
-    const listaContactos = document.getElementById('listaContactos');
-    const contactosPatrocinador = contactos_patrocinador.filter(c => c.patrocinador_id === patrocinadorId);
+    const lista = document.getElementById('listaContactos');
+    const contactos = contactos_patrocinador.filter(c => c.patrocinador_id === patrocinadorId);
 
-    if (contactosPatrocinador.length === 0) {
-        listaContactos.innerHTML = '<p style="color: #999; text-align: center;">No hay contactos_patrocinador registrados</p>';
+    if (contactos.length === 0) {
+        lista.innerHTML = '<p style="color:#999;text-align:center;">No hay contactos registrados</p>';
         return;
     }
 
-    listaContactos.innerHTML = contactosPatrocinador.map(c => `
+    lista.innerHTML = contactos.map(c => `
         <div class="contacto-card">
             <div class="contacto-info">
-                <strong>${c.nombre}</strong>
-                ${c.email ? `<br>📧 ${c.email}` : ''}
-                ${c.telefono ? `<br>📱 ${c.telefono}` : ''}
+                <strong>${escapeHtml(c.nombre)}</strong>
+                ${c.email    ? `<br>📧 ${escapeHtml(c.email)}`    : ''}
+                ${c.telefono ? `<br>📱 ${escapeHtml(c.telefono)}` : ''}
             </div>
             <div class="contacto-actions">
-                <button class="btn-action btn-edit" onclick="editarContacto(${c.id})" title="Editar">✏️</button>
+                <button class="btn-action btn-edit"   onclick="editarContacto(${c.id})"   title="Editar">✏️</button>
                 <button class="btn-action btn-delete" onclick="eliminarContacto(${c.id})" title="Eliminar">🗑️</button>
             </div>
         </div>
@@ -544,84 +608,60 @@ async function cargarContactosPatrocinador(patrocinadorId) {
 async function guardarContacto(event) {
     event.preventDefault();
 
-    const contactoId = document.getElementById('contactoId').value;
+    const contactoId    = document.getElementById('contactoId').value;
     const patrocinadorId = parseInt(document.getElementById('contactoPatrocinadorId').value);
-    const nombre = document.getElementById('contactoNombre').value;
-    const email = document.getElementById('contactoEmail').value;
-    const telefono = document.getElementById('contactoTelefono').value;
+    const datos = {
+        patrocinador_id: patrocinadorId,
+        nombre:   document.getElementById('contactoNombre').value,
+        email:    document.getElementById('contactoEmail').value    || null,
+        telefono: document.getElementById('contactoTelefono').value || null,
+    };
 
     try {
-        const datos = {
-            patrocinador_id: patrocinadorId,
-            nombre,
-            email: email || null,
-            telefono: telefono || null
-        };
-
         if (contactoId) {
-            // ✏️ EDITAR (UPDATE)
-            const { error } = await supabase
-                .from('contactos_patrocinador')
-                .update(datos)
-                .eq('id', contactoId);
-
+            const { error } = await supabase.from('contactos_patrocinador').update(datos).eq('id', contactoId);
             if (error) throw error;
-
         } else {
-            // ➕ NUEVO (INSERT)
-            const { error } = await supabase
-                .from('contactos_patrocinador')
-                .insert([datos]);
-
+            const { error } = await supabase.from('contactos_patrocinador').insert([datos]);
             if (error) throw error;
         }
 
-        // 🔄 Recargar datos
         await cargarContactos();
         await cargarContactosPatrocinador(patrocinadorId);
         renderFilteredPatrocinadores();
 
-        // 🧼 Limpiar formulario
         document.getElementById('formContacto').reset();
         document.getElementById('contactoId').value = '';
         document.getElementById('btnGuardarContacto').textContent = '➕ Agregar Contacto';
     } catch (error) {
         console.error('Error guardando contacto:', error);
+        mostrarToast('Error al guardar contacto', 'error');
     }
 }
 
 async function editarContacto(contactoId) {
-    const contacto = contactos_patrocinador.find(c => c.id === contactoId);
-    if (!contacto) return;
+    const c = contactos_patrocinador.find(c => c.id === contactoId);
+    if (!c) return;
 
-    document.getElementById('contactoId').value = contacto.id;
-    document.getElementById('contactoNombre').value = contacto.nombre;
-    document.getElementById('contactoEmail').value = contacto.email || '';
-    document.getElementById('contactoTelefono').value = contacto.telefono || '';
-
-    //boton actualizar
+    document.getElementById('contactoId').value    = c.id;
+    document.getElementById('contactoNombre').value  = c.nombre;
+    document.getElementById('contactoEmail').value   = c.email    || '';
+    document.getElementById('contactoTelefono').value = c.telefono || '';
     document.getElementById('btnGuardarContacto').textContent = 'Actualizar Contacto';
-    
-    // Scroll al formulario
     document.querySelector('.contacto-form-section').scrollIntoView({ behavior: 'smooth' });
-    
 }
 
 async function eliminarContacto(contactoId) {
-    if (!confirm('¿Estás seguro de que deseas eliminar este contacto?')) return;
+    if (!confirm('¿Eliminar este contacto?')) return;
 
     try {
-        const { error } = await supabase
-            .from('contactos_patrocinador')
-            .delete()
-            .eq('id', contactoId);
-
+        const { error } = await supabase.from('contactos_patrocinador').delete().eq('id', contactoId);
         if (error) throw error;
-        mostrarToast('Contacto eliminado correctamente', 'success');
-        
-        const patrocinadorId = document.getElementById('contactoPatrocinadorId').value;
+
+        mostrarToast('Contacto eliminado', 'success');
+        const patrocinadorId = parseInt(document.getElementById('contactoPatrocinadorId').value);
         await cargarContactos();
-        await cargarContactosPatrocinador(parseInt(patrocinadorId));
+        await cargarContactosPatrocinador(patrocinadorId);
         actualizarEstadisticas();
         renderFilteredPatrocinadores();
     } catch (error) {
@@ -634,64 +674,99 @@ async function eliminarContacto(contactoId) {
 // ESTADÍSTICAS
 // ============================================
 function actualizarEstadisticas() {
-    const totalPatrocinadores = patrocinadores.length;
-    const totalMonto = patrocinadores.reduce((sum, p) => sum + (p.monto_pagado_total || 0), 0);
-    const totalNotaCredito = patrocinadores.reduce((sum, p) => sum + (p.nota_credito || 0), 0);
-    const totalEspecie = patrocinadores.reduce((sum, p) => sum + (p.monto_especie || 0), 0);
-    const totalFaltaTransferir = patrocinadores.reduce((sum, p) => sum + (p.falta_transferir || 0), 0);
-    const totalContactos = contactos_patrocinador.length;
-
-    document.getElementById('totalPatrocinadores').textContent = totalPatrocinadores;
-    document.getElementById('totalMonto').textContent = formatCurrency(totalMonto);
-    document.getElementById('totalNotaCredito').textContent = formatCurrency(totalNotaCredito);
-    document.getElementById('totalEspecie').textContent = formatCurrency(totalEspecie);
-    document.getElementById('totalFaltaTransferir').textContent = formatCurrency(totalFaltaTransferir);
-    document.getElementById('totalContactos').textContent = totalContactos;
+    document.getElementById('totalPatrocinadores').textContent  = patrocinadores.length;
+    document.getElementById('totalMonto').textContent           = formatCurrency(patrocinadores.reduce((s, p) => s + (p.monto_pagado_total  || 0), 0));
+    document.getElementById('totalNotaCredito').textContent     = formatCurrency(patrocinadores.reduce((s, p) => s + (p.nota_credito        || 0), 0));
+    document.getElementById('totalEspecie').textContent         = formatCurrency(patrocinadores.reduce((s, p) => s + (p.monto_especie       || 0), 0));
+    document.getElementById('totalFaltaTransferir').textContent = formatCurrency(patrocinadores.reduce((s, p) => s + (p.falta_transferir    || 0), 0));
+    document.getElementById('totalContactos').textContent       = contactos_patrocinador.length;
 }
 
 // ============================================
-// FUNCIONES AUXILIARES
+// AUXILIARES
 // ============================================
 function formatCurrency(value) {
-    return new Intl.NumberFormat('es-MX', {
-        style: 'currency',
-        currency: 'MXN'
-    }).format(value || 0);
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value || 0);
+}
+
+// Formatea mientras el usuario escribe (ej: "$ 1,234.5")
+function formatearInputMoneda(input) {
+    let raw = input.value.replace(/[^0-9.]/g, '');
+    const parts = raw.split('.');
+    if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
+
+    if (!raw || raw === '.') { input.value = raw ? '$ 0.' : ''; return; }
+
+    const [intPart, decPart] = raw.split('.');
+    const intFormateado = parseInt(intPart || '0', 10)
+        .toString()
+        .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+    input.value = '$ ' + intFormateado + (decPart !== undefined ? '.' + decPart : '');
+}
+
+// Formato completo al salir del campo (ej: "$ 1,234.50")
+function formatearMonedaCompleta(num) {
+    return '$ ' + num.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Convierte "$ 1,234.50" → 1234.50
+function parsearMoneda(str) {
+    return parseFloat(String(str).replace(/[^0-9.]/g, '')) || 0;
+}
+
+// Modal descripción de especie (solo lectura)
+function abrirModalEspecie(descripcion, nombrePatrocinador) {
+    document.getElementById('modalEspecieTitulo').textContent = `Especie — ${nombrePatrocinador}`;
+    document.getElementById('modalEspecieTexto').textContent = descripcion || 'Sin descripción.';
+    document.getElementById('modalEspecie').style.display = 'flex';
+}
+
+function cerrarModalEspecie() {
+    document.getElementById('modalEspecie').style.display = 'none';
+}
+
+// Toggle descripción de especie
+function toggleDescripcionEspecie() {
+    const activo = document.getElementById('toggleEspecie').checked;
+    document.getElementById('descripcionEspecieWrapper').style.display = activo ? 'block' : 'none';
+    if (!activo) document.getElementById('descripcionEspecie').value = '';
 }
 
 function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
+    if (!text) return '';
+    return String(text).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]));
 }
 
 function mostrarToast(mensaje, tipo = 'info') {
     const toast = document.getElementById('toast');
     toast.textContent = mensaje;
     toast.className = `toast toast-${tipo} show`;
-    
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
+    setTimeout(() => toast.classList.remove('show'), 3000);
 }
-// Hacer funciones globales para HTML
-window.abrirModalPatrocinador = abrirModalPatrocinador;
-window.cerrarModalPatrocinador = cerrarModalPatrocinador;
-window.guardarPatrocinador = guardarPatrocinador;
-window.manejarCambioCategoria = manejarCambioCategoria;
-window.editarPatrocinador = editarPatrocinador;
-window.eliminarPatrocinador = eliminarPatrocinador;
 
-window.abrirContactosModal = abrirContactosModal;
-window.cerrarContactosModal = cerrarContactosModal;
-window.guardarContacto = guardarContacto;
-window.editarContacto = editarContacto;
-window.eliminarContacto = eliminarContacto;
+// ============================================
+// EXPONER FUNCIONES AL HTML
+// ============================================
+window.abrirModalPatrocinador    = abrirModalPatrocinador;
+window.cerrarModalPatrocinador   = cerrarModalPatrocinador;
+window.guardarPatrocinador       = guardarPatrocinador;
+window.editarPatrocinador        = editarPatrocinador;
+window.eliminarPatrocinador      = eliminarPatrocinador;
 
-window.filtrarCategoria = filtrarCategoria;
+window.abrirModalCategorias      = abrirModalCategorias;
+window.cerrarModalCategorias     = cerrarModalCategorias;
+window.crearCategoria            = crearCategoria;
+window.eliminarCategoria         = eliminarCategoria;
+
+window.abrirContactosModal       = abrirContactosModal;
+window.cerrarContactosModal      = cerrarContactosModal;
+window.guardarContacto           = guardarContacto;
+window.editarContacto            = editarContacto;
+window.eliminarContacto          = eliminarContacto;
+
+window.filtrarCategoria          = filtrarCategoria;
 window.buscarPatrocinadoresDebounced = buscarPatrocinadoresDebounced;
+window.toggleDescripcionEspecie  = toggleDescripcionEspecie;
+window.abrirModalEspecie         = abrirModalEspecie;
+window.cerrarModalEspecie        = cerrarModalEspecie;

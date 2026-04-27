@@ -10,14 +10,19 @@
 <body>
 
     <!-- Header con botón de nuevo patrocinador -->
-    <header>
-        <div class="header-container">
-            <h1>🤝 CRM Patrocinadores 2025</h1>
+<header>
+    <div class="header-container">
+        <h1>🤝 CRM Patrocinadores 2025</h1>
+        <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary" onclick="abrirModalCategorias()">
+                🏷️ Categorías
+            </button>
             <button class="btn btn-primary" onclick="abrirModalPatrocinador()">
                 ➕ Nuevo Patrocinador
             </button>
         </div>
-    </header>
+    </div>
+</header>
 
     <!-- Estadísticas -->
     <section class="stats-container">
@@ -114,7 +119,7 @@
         </div>
     </section>
 
-    <!-- MODAL PATROCINADOR -->
+<!-- MODAL PATROCINADOR -->
     <div class="modal" id="modalPatrocinador">
         <div class="modal-content">
             <div class="modal-header">
@@ -128,54 +133,52 @@
                     <label for="patrocinador">Nombre del Patrocinador *</label>
                     <input type="text" id="patrocinador" required placeholder="Ej: Empresa XYZ">
                 </div>
-
                 <div class="form-group">
                     <label for="categoria">Categoría *</label>
-                    <select id="categoria" required onchange="manejarCambioCategoria()">
+                    <select id="categoria" required>
                         <option value="">Seleccionar categoría</option>
-                        <!-- Las opciones se cargarán dinámicamente desde la base de datos -->
+                        <!-- Poblado dinámicamente desde cargarOpcionesCategoria() -->
                     </select>
                 </div>
-
-                <!-- Input para nueva categoría (oculto por defecto) -->
-                <div class="form-group" id="nuevaCategoriaGroup" style="display: none;">
-                    <label for="nuevaCategoria">Nueva Categoría *</label>
-                    <input type="text" id="nuevaCategoria" placeholder="Ej: 1. Diamante">
-                    <small style="color: #666; font-size: 0.75rem;">Escribe el nombre de la nueva categoría</small>
-                </div>
-
+                
                 <div class="form-row">
                     <div class="form-group">
                         <label for="montoTransferencia">Monto Transferencia</label>
-                        <input type="number" id="montoTransferencia" step="0.01" value="0">
+                        <input type="text" id="montoTransferencia" placeholder="$ 0.00">
                     </div>
                     <div class="form-group">
                         <label for="notaCredito">Nota de Crédito</label>
-                        <input type="number" id="notaCredito" step="0.01" value="0">
+                        <input type="text" id="notaCredito" placeholder="$ 0.00">
                     </div>
                 </div>
-
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="montoEspecie">Monto en Especie</label>
-                        <input type="number" id="montoEspecie" step="0.01" value="0">
+                <div class="form-group">
+                    <label for="montoEspecie">Monto en Especie</label>
+                    <input type="text" id="montoEspecie" placeholder="$ 0.00">
+                    <div class="especie-toggle-row">
+                        <span>Descripción de especie</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggleEspecie" onchange="toggleDescripcionEspecie()">
+                            <span class="toggle-slider"></span>
+                        </label>
                     </div>
-                    <div class="form-group">
-                        <label for="montoPagadoTotal">Monto Pagado Total</label>
-                        <input type="number" id="montoPagadoTotal" step="0.01" value="0">
+                    <div id="descripcionEspecieWrapper" style="display:none; margin-top: 8px;">
+                        <textarea id="descripcionEspecie" rows="3" placeholder="Describe los bienes o servicios en especie..."></textarea>
                     </div>
                 </div>
-
+                <div class="form-group">
+                    <label for="montoPagadoTotal">Monto Pagado Total</label>
+                    <input type="text" id="montoPagadoTotal" placeholder="$ 0.00">
+                </div>
+            </div>
                 <div class="form-group">
                     <label for="faltaTransferir">Falta Transferir</label>
-                    <input type="number" id="faltaTransferir" step="0.01" value="0">
+                    <input type="text" id="faltaTransferir" placeholder="$ 0.00">
                 </div>
-
                 <div class="form-group">
                     <label for="descripcion">Descripción</label>
                     <textarea id="descripcion" rows="3" placeholder="Notas adicionales..."></textarea>
                 </div>
-
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="cerrarModalPatrocinador()">
                         Cancelar
@@ -233,12 +236,43 @@
             </div>
         </div>
     </div>
+</div> <!-- cierre del modal contactos -->
 
-    <!-- Toast para notificaciones -->
-    <div class="toast" id="toast"></div>
+<!-- MODAL CATEGORÍAS -->
+<div class="modal" id="modalCategorias">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Categorías</h2>
+            <button class="close-btn" onclick="cerrarModalCategorias()">×</button>
+        </div>
 
-    <!-- Scripts -->
-    <script type="module" src="app.js"></script>
+        <div style="margin-bottom: 1rem;">
+            <input type="text" id="nuevaCategoriaInput" placeholder="Nueva categoría">
+            <button class="btn btn-primary" onclick="crearCategoria()">➕ Agregar</button>
+        </div>
+
+        <div id="listaCategorias"></div>
+    </div>
+</div>
+
+<!-- MODAL DESCRIPCIÓN ESPECIE -->
+<div class="modal" id="modalEspecie">
+    <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-header">
+            <h2 id="modalEspecieTitulo">Descripción de Especie</h2>
+            <button class="close-btn" onclick="cerrarModalEspecie()">×</button>
+        </div>
+        <div style="padding: 1.5rem;">
+            <p id="modalEspecieTexto" style="white-space: pre-wrap; color: #444; line-height: 1.6;"></p>
+        </div>
+    </div>
+</div>
+
+<!-- Toast para notificaciones -->
+<div class="toast" id="toast"></div>
+
+<!-- Scripts -->
+<script type="module" src="app.js"></script>
 
 </body>
 </html>
