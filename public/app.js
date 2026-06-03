@@ -15,10 +15,16 @@ let debounceTimer = null;
 // INICIALIZAR LA APLICACIÓN
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
-    await cargarPatrocinadores(); // 🔥 IMPORTANTE
-    await cargarCategorias();
-    await cargarContactos();
-    await cargarFinanzas();
+    // Cargar datos en paralelo (4 fetches simultáneos en vez de uno tras otro)
+    await Promise.all([
+        cargarPatrocinadores(),
+        cargarCategorias(),
+        cargarContactos(),
+        cargarFinanzas(),
+    ]);
+
+    // Render final único después de tener toda la data
+    renderBotonesCategorias();
     actualizarEstadisticas();
     renderFilteredPatrocinadores();
 
@@ -66,7 +72,7 @@ async function cargarCategorias() {
 
         categorias = data || [];
         cargarOpcionesCategoria();
-        renderBotonesCategorias();
+        // renderBotonesCategorias() lo llama quien necesite refrescar contadores
 
         console.log('Categorías cargadas:', categorias.length);
     } catch (error) {
@@ -155,8 +161,6 @@ async function cargarContactos() {
 
         contactos_patrocinador = data || [];
         console.log('Contactos cargados:', contactos_patrocinador.length);
-
-        renderFilteredPatrocinadores();
     } catch (error) {
         console.error('Error cargando contactos:', error);
     }
@@ -326,35 +330,39 @@ function renderFilteredPatrocinadores() {
             ? `<br><small style="color:#2563eb;font-weight:500;">📞 Encontrado por contacto: ${escapeHtml(matchingContact)}</small>`
             : '';
 
+        const especieMonto = p.monto_especie || 0;
+        const celdaEspecie = p.descripcion_especie
+            ? `<span
+                    class="celda-clicable"
+                    title="Ver descripción de especie"
+                    onclick="abrirModalEspecie('${escapeHtml(p.descripcion_especie).replace(/'/g, '&#39;')}', '${escapeHtml(p.patrocinador)}')"
+               >${especieMonto > 0 ? formatCurrency(especieMonto) : '<span class="monto-cero">—</span>'} 📦</span>`
+            : formatCurrencyMuted(especieMonto);
+
+        const faltaTransferir = p.falta_transferir || 0;
+        const celdaFalta = faltaTransferir > 0
+            ? `<span class="estatus-pendiente">${formatCurrency(faltaTransferir)}</span>`
+            : `<span class="estatus-corriente" title="Al corriente">✅ Al corriente</span>`;
+
+        const celdaDescripcion = p.descripcion
+            ? `<button
+                    class="btn-descripcion"
+                    title="Ver descripción completa"
+                    onclick="abrirModalEspecie('${escapeHtml(p.descripcion).replace(/'/g, '&#39;')}', '${escapeHtml(p.patrocinador)} — Descripción')"
+               >📝 Ver</button>`
+            : `<span class="monto-cero">—</span>`;
+
         return `
             <tr>
-                <td>${p.id}</td>
-                <td><strong>${escapeHtml(p.patrocinador)}</strong>${contactIndicator}</td>
+                <td class="col-id">${p.id}</td>
+                <td><strong class="nombre-patrocinador">${escapeHtml(p.patrocinador)}</strong>${contactIndicator}</td>
                 <td><span class="badge badge-${categoriaClass}">${escapeHtml(nombreCategoria)}</span></td>
-                <td>${formatCurrency(p.monto_transferencia)}</td>
-                <td>${formatCurrency(p.nota_credito)}</td>
-                <td>
-                    ${p.descripcion_especie
-                        ? `<span
-                                style="cursor:pointer;color:#2563eb;text-decoration:underline;"
-                                title="Ver descripción de especie"
-                                onclick="abrirModalEspecie('${escapeHtml(p.descripcion_especie).replace(/'/g, '&#39;')}', '${escapeHtml(p.patrocinador)}')"
-                           >${formatCurrency(p.monto_especie)} 📦</span>`
-                        : formatCurrency(p.monto_especie)
-                    }
-                </td>
-                <td><strong>${formatCurrency(p.monto_pagado_total)}</strong></td>
-                <td class="${p.falta_transferir > 0 ? 'text-danger' : 'text-success'}">${formatCurrency(p.falta_transferir)}</td>
-                <td>
-                    ${p.descripcion
-                        ? `<span
-                                style="cursor:pointer;color:#2563eb;text-decoration:underline;"
-                                title="Ver descripción completa"
-                                onclick="abrirModalEspecie('${escapeHtml(p.descripcion).replace(/'/g, '&#39;')}', '${escapeHtml(p.patrocinador)} — Descripción')"
-                           >${escapeHtml(p.descripcion.substring(0, 50))}${p.descripcion.length > 50 ? '…' : ''}</span>`
-                        : '-'
-                    }
-                </td>
+                <td>${formatCurrencyMuted(p.monto_transferencia)}</td>
+                <td>${formatCurrencyMuted(p.nota_credito)}</td>
+                <td>${celdaEspecie}</td>
+                <td><strong class="monto-total">${formatCurrencyMuted(p.monto_pagado_total)}</strong></td>
+                <td>${celdaFalta}</td>
+                <td>${celdaDescripcion}</td>
                 <td>
                     <div class="action-buttons">
                         <button class="btn-action btn-contactos_patrocinador" onclick="abrirContactosModal(${p.id}, '${escapeHtml(p.patrocinador)}')" title="Ver contactos">
@@ -441,7 +449,7 @@ async function guardarPatrocinador(event) {
         cerrarModalPatrocinador();
 
         await cargarPatrocinadores();
-        await cargarCategorias(); // 🔥 clave
+        renderBotonesCategorias(); // recalcula contadores sin tocar la DB
         actualizarEstadisticas();
         renderFilteredPatrocinadores();
 
@@ -492,9 +500,10 @@ async function eliminarPatrocinador(id, nombre) {
         if (error) throw error;
 
         mostrarToast('Patrocinador eliminado correctamente', 'success');
+        // Quitar contactos del patrocinador eliminado en memoria (evita un fetch a la DB)
+        contactos_patrocinador = contactos_patrocinador.filter(c => c.patrocinador_id !== id);
         await cargarPatrocinadores();
         renderBotonesCategorias();
-        await cargarContactos();
         actualizarEstadisticas();
         renderFilteredPatrocinadores();
     } catch (error) {
@@ -696,6 +705,14 @@ function actualizarEstadisticas() {
 // ============================================
 function formatCurrency(value) {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value || 0);
+}
+
+// Atenúa $0.00 a gris claro o muestra un guion para reducir ruido visual
+function formatCurrencyMuted(value) {
+    if (!value || value === 0) {
+        return `<span class="monto-cero">—</span>`;
+    }
+    return formatCurrency(value);
 }
 
 // Formatea mientras el usuario escribe (ej: "$ 1,234.5")

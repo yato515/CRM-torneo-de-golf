@@ -386,6 +386,84 @@ header {
     font-weight: 600;
 }
 
+/* Montos en cero → atenuados para reducir ruido visual */
+.monto-cero {
+    color: #cbd5e1;
+    font-weight: 400;
+}
+
+/* Nombre del patrocinador → más prominente */
+.nombre-patrocinador {
+    font-size: 1rem;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+/* Total pagado destacado */
+.monto-total {
+    color: #0f172a;
+    font-size: 1rem;
+}
+
+/* ID en columna gris claro */
+.col-id {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* Estatus "Falta Transferir" */
+.estatus-pendiente {
+    display: inline-block;
+    background: #fee2e2;
+    color: #b91c1c;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.estatus-corriente {
+    display: inline-block;
+    color: #15803d;
+    font-weight: 600;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+/* Celdas clicables (especie con descripción) */
+.celda-clicable {
+    cursor: pointer;
+    color: #0f172a;
+    border-bottom: 1px dashed #94a3b8;
+    transition: color 0.15s;
+}
+
+.celda-clicable:hover {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+}
+
+/* Botón compacto para abrir descripción */
+.btn-descripcion {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    padding: 0.35rem 0.7rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+}
+
+.btn-descripcion:hover {
+    background: #e0e7ff;
+    border-color: #c7d2fe;
+    color: #4338ca;
+}
+
 /* Modal */
 .modal {
     display: none;
@@ -573,6 +651,52 @@ form {
     text-align: center;
     padding: 2rem;
     color: #666;
+}
+
+/* Modal Categorías */
+.categoria-form {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1.25rem 1.5rem;
+}
+
+.categoria-form input {
+    flex: 1;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+}
+
+.categoria-form input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.categoria-lista {
+    padding: 0 1.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.categoria-lista .contacto-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: #f9fafb;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    transition: border-color 0.2s;
+}
+
+.categoria-lista .contacto-card:hover {
+    border-color: #2563eb;
 }
 
 /* Toast */
