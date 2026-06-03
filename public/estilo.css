@@ -236,6 +236,16 @@ header {
     background: #475569;
 }
 
+.btn-export {
+    background: #15803d;
+    color: white;
+    text-decoration: none;
+}
+
+.btn-export:hover {
+    background: #116932;
+}
+
 .btn-block {
     width: 100%;
     justify-content: center;
@@ -738,4 +748,192 @@ form {
 .form-row .form-group {
     min-width: 0;
     flex: 1;
+}
+
+/* ============================================
+   PESTAÑAS DE NAVEGACIÓN
+   ============================================ */
+.tabs-container {
+    display: flex;
+    gap: 0;
+    padding: 0 30px;
+    margin-top: 0.75rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.tab-btn {
+    padding: 0.6rem 1.4rem;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.tab-btn:hover {
+    color: #2563eb;
+    background: #f8faff;
+    border-radius: 6px 6px 0 0;
+}
+
+.tab-btn.active {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+}
+
+/* ============================================
+   MÓDULO FINANZAS
+   ============================================ */
+
+/* Fila de resumen (3 tarjetas grandes) */
+.finanzas-resumen-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.finanza-card {
+    background: #f9fafb;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.25rem 1.25rem 1.25rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+    transition: box-shadow 0.2s;
+}
+
+.finanza-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Card de Meta */
+.finanza-meta {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+
+/* Card de Total Prometido */
+.finanza-total {
+    border-color: #a7f3d0;
+    background: #ecfdf5;
+}
+
+/* Card de Resultado: superada */
+.finanza-superada {
+    border-color: #6ee7b7;
+    background: #d1fae5;
+}
+
+/* Card de Resultado: faltante */
+.finanza-faltante {
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
+
+.finanza-icon {
+    font-size: 1.8rem;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.finanza-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.finanza-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.3rem;
+}
+
+.finanza-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #1e293b;
+    word-break: break-word;
+}
+
+.finanza-edit-btn {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.finanza-card:hover .finanza-edit-btn {
+    opacity: 1;
+}
+
+/* Grid de ingresos individuales */
+.finanzas-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.finanza-ingreso-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+    transition: box-shadow 0.2s;
+}
+
+.finanza-ingreso-card:hover {
+    box-shadow: 0 3px 8px rgba(0,0,0,0.07);
+}
+
+.finanza-ingreso-card .finanza-label {
+    font-size: 0.7rem;
+}
+
+.finanza-ingreso-card .finanza-value {
+    font-size: 1.1rem;
+}
+
+/* Responsive finanzas */
+@media (max-width: 1024px) {
+    .finanzas-resumen-row,
+    .finanzas-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .finanzas-resumen-row,
+    .finanzas-grid {
+        grid-template-columns: 1fr;
+    }
 }

@@ -6,6 +6,7 @@ import supabase from './supabaseClient.js';
 let patrocinadores = [];
 let contactos_patrocinador = [];
 let categorias = [];
+let finanzas = [];
 let currentFilter = 'all'; // 'all' o categoria.id (número)
 let filteredPatrocinadores = [];
 let debounceTimer = null;
@@ -17,6 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await cargarPatrocinadores(); // 🔥 IMPORTANTE
     await cargarCategorias();
     await cargarContactos();
+    await cargarFinanzas();
     actualizarEstadisticas();
     renderFilteredPatrocinadores();
 
@@ -379,6 +381,9 @@ function abrirModalPatrocinador() {
     document.getElementById('toggleEspecie').checked = false;
     document.getElementById('descripcionEspecieWrapper').style.display = 'none';
     document.getElementById('descripcionEspecie').value = '';
+    // ✅ Resetear toggle copiar especie
+    document.getElementById('toggleCopiarEspecie').checked = false;
+    toggleCopiarMontoEspecie();
     document.getElementById('modalPatrocinador').style.display = 'flex';
 }
 
@@ -465,6 +470,10 @@ async function editarPatrocinador(id) {
     document.getElementById('toggleEspecie').checked = tieneDescEspecie;
     document.getElementById('descripcionEspecieWrapper').style.display = tieneDescEspecie ? 'block' : 'none';
     document.getElementById('descripcionEspecie').value = p.descripcion_especie || '';
+
+    // ✅ Resetear toggle copiar especie al editar
+    document.getElementById('toggleCopiarEspecie').checked = false;
+    toggleCopiarMontoEspecie();
 
     document.getElementById('modalPatrocinadorTitle').textContent = 'Editar Patrocinador';
     document.getElementById('modalPatrocinador').style.display = 'flex';
@@ -679,7 +688,7 @@ function actualizarEstadisticas() {
     document.getElementById('totalNotaCredito').textContent     = formatCurrency(patrocinadores.reduce((s, p) => s + (p.nota_credito        || 0), 0));
     document.getElementById('totalEspecie').textContent         = formatCurrency(patrocinadores.reduce((s, p) => s + (p.monto_especie       || 0), 0));
     document.getElementById('totalFaltaTransferir').textContent = formatCurrency(patrocinadores.reduce((s, p) => s + (p.falta_transferir    || 0), 0));
-    document.getElementById('totalContactos').textContent       = contactos_patrocinador.length;
+    document.getElementById('totalTransferencia').textContent   = formatCurrency(patrocinadores.reduce((s, p) => s + (p.monto_transferencia || 0), 0));
 }
 
 // ============================================
@@ -733,6 +742,42 @@ function toggleDescripcionEspecie() {
     if (!activo) document.getElementById('descripcionEspecie').value = '';
 }
 
+// ✅ Toggle: copiar monto especie → monto pagado total
+function toggleCopiarMontoEspecie() {
+    const activo       = document.getElementById('toggleCopiarEspecie').checked;
+    const inputEspecie = document.getElementById('montoEspecie');
+    const inputPagado  = document.getElementById('montoPagadoTotal');
+
+    if (activo) {
+        // Copiar valor actual de especie
+        const num = parsearMoneda(inputEspecie.value);
+        inputPagado.value = num === 0 ? '' : formatearMonedaCompleta(num);
+
+        // Bloquear edición manual mientras el toggle está activo
+        inputPagado.readOnly = true;
+        inputPagado.style.opacity = '0.6';
+        inputPagado.style.cursor  = 'not-allowed';
+
+        // Sincronizar en tiempo real si cambia el monto especie
+        inputEspecie._syncListener = () => {
+            const n = parsearMoneda(inputEspecie.value);
+            inputPagado.value = n === 0 ? '' : formatearMonedaCompleta(n);
+        };
+        inputEspecie.addEventListener('input', inputEspecie._syncListener);
+    } else {
+        // Restaurar campo a editable
+        inputPagado.readOnly = false;
+        inputPagado.style.opacity = '1';
+        inputPagado.style.cursor  = '';
+
+        // Remover listener de sincronización
+        if (inputEspecie._syncListener) {
+            inputEspecie.removeEventListener('input', inputEspecie._syncListener);
+            delete inputEspecie._syncListener;
+        }
+    }
+}
+
 function escapeHtml(text) {
     if (!text) return '';
     return String(text).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]));
@@ -743,6 +788,143 @@ function mostrarToast(mensaje, tipo = 'info') {
     toast.textContent = mensaje;
     toast.className = `toast toast-${tipo} show`;
     setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ============================================
+// NAVEGACIÓN POR PESTAÑAS
+// ============================================
+function cambiarTab(tab) {
+    // Mostrar/ocultar contenido
+    document.getElementById('tab-crm').style.display      = tab === 'crm'      ? 'block' : 'none';
+    document.getElementById('tab-finanzas').style.display = tab === 'finanzas'  ? 'block' : 'none';
+
+    // Actualizar estilos de botones
+    document.getElementById('tab-btn-crm').classList.toggle('active',      tab === 'crm');
+    document.getElementById('tab-btn-finanzas').classList.toggle('active',  tab === 'finanzas');
+
+    // Mostrar/ocultar botones del header según pestaña
+    document.getElementById('headerAcciones').style.display = tab === 'crm' ? 'flex' : 'none';
+}
+
+// ============================================
+// MÓDULO FINANZAS
+// ============================================
+
+// Campos editables (todos menos los calculados)
+const FINANZAS_EDITABLES = [
+    { clave: 'total_nc_transferencias', etiqueta: 'Total NC + Transferencias', icono: '🏦' },
+    { clave: 'jugadores_inscripciones', etiqueta: 'Jugadores Inscripciones Portal', icono: '⛳' },
+    { clave: 'pago_previo_cenas',       etiqueta: 'Pago Previo de Acceso Cenas', icono: '🍽️' },
+    { clave: 'ingresos_cena_jugadores', etiqueta: 'Ingresos Día de Cena Jugadores', icono: '🎟️' },
+    { clave: 'ingresos_cena_quizz',     etiqueta: 'Ingresos Cena Quizz It', icono: '🧠' },
+    { clave: 'ingresos_activaciones',   etiqueta: 'Ingresos Activaciones', icono: '🎪' },
+];
+
+async function cargarFinanzas() {
+    try {
+        const { data, error } = await supabase
+            .from('finanzas_2025')
+            .select('*')
+            .order('orden', { ascending: true });
+
+        if (error) throw error;
+        finanzas = data || [];
+        renderFinanzas();
+    } catch (error) {
+        console.error('Error cargando finanzas:', error);
+        mostrarToast('Error al cargar finanzas', 'error');
+    }
+}
+
+function getFinanzaValor(clave) {
+    const f = finanzas.find(f => f.clave === clave);
+    return f ? (f.valor || 0) : 0;
+}
+
+function renderFinanzas() {
+    // Calcular totales
+    const meta = getFinanzaValor('meta_recaudacion');
+    const totalPrometido = FINANZAS_EDITABLES.reduce((sum, f) => sum + getFinanzaValor(f.clave), 0);
+    const diferencia = totalPrometido - meta;
+
+    // Tarjeta meta
+    document.getElementById('fin-meta_recaudacion').textContent = formatCurrency(meta);
+
+    // Tarjeta total prometido
+    document.getElementById('fin-total_prometido').textContent = formatCurrency(totalPrometido);
+
+    // Tarjeta resultado
+    const resultCard  = document.getElementById('fin-resultado-card');
+    const resultIcon  = document.getElementById('fin-resultado-icon');
+    const resultLabel = document.getElementById('fin-resultado-label');
+    const resultValor = document.getElementById('fin-resultado-valor');
+
+    resultCard.className = 'finanza-card ' + (diferencia >= 0 ? 'finanza-superada' : 'finanza-faltante');
+    resultIcon.textContent  = diferencia >= 0 ? '🏆' : '⚠️';
+    resultLabel.textContent = diferencia >= 0 ? '¡¡Meta Superada!!' : 'Falta para la Meta';
+    resultValor.textContent = formatCurrency(Math.abs(diferencia));
+    resultValor.style.color = diferencia >= 0 ? '#15803d' : '#dc2626';
+
+    // Grid de ingresos individuales
+    const grid = document.getElementById('finanzasGrid');
+    grid.innerHTML = FINANZAS_EDITABLES.map(f => {
+        const valor = getFinanzaValor(f.clave);
+        return `
+            <div class="finanza-ingreso-card">
+                <div class="finanza-icon">${f.icono}</div>
+                <div class="finanza-body">
+                    <div class="finanza-label">${f.etiqueta}</div>
+                    <div class="finanza-value">${formatCurrency(valor)}</div>
+                </div>
+                <button class="finanza-edit-btn" onclick="editarFinanza('${f.clave}')" title="Editar">✏️</button>
+            </div>`;
+    }).join('');
+}
+
+function editarFinanza(clave) {
+    // Buscar etiqueta
+    let etiqueta = clave === 'meta_recaudacion' ? 'Meta Recaudación'
+        : (FINANZAS_EDITABLES.find(f => f.clave === clave)?.etiqueta || clave);
+
+    const valorActual = getFinanzaValor(clave);
+
+    document.getElementById('finanzaClave').value = clave;
+    document.getElementById('modalFinanzaTitulo').textContent = `Editar: ${etiqueta}`;
+    document.getElementById('finanzaEtiquetaLabel').textContent = etiqueta;
+    document.getElementById('finanzaValorInput').value = valorActual ? formatearMonedaCompleta(valorActual) : '';
+    document.getElementById('modalFinanza').style.display = 'flex';
+
+    // Aplicar formateo al input
+    const input = document.getElementById('finanzaValorInput');
+    input.oninput = () => formatearInputMoneda(input);
+    input.onblur  = () => { const n = parsearMoneda(input.value); input.value = n === 0 ? '' : formatearMonedaCompleta(n); };
+    input.onfocus = () => { const n = parsearMoneda(input.value); input.value = n === 0 ? '' : n.toString(); };
+}
+
+function cerrarModalFinanza() {
+    document.getElementById('modalFinanza').style.display = 'none';
+}
+
+async function guardarFinanza(event) {
+    event.preventDefault();
+    const clave = document.getElementById('finanzaClave').value;
+    const valor = parsearMoneda(document.getElementById('finanzaValorInput').value);
+
+    try {
+        // Upsert: actualiza si existe, inserta si no
+        const { error } = await supabase
+            .from('finanzas_2025')
+            .upsert({ clave, valor }, { onConflict: 'clave' });
+
+        if (error) throw error;
+
+        mostrarToast('Valor actualizado correctamente', 'success');
+        cerrarModalFinanza();
+        await cargarFinanzas();
+    } catch (error) {
+        console.error('Error guardando finanza:', error);
+        mostrarToast('Error al guardar', 'error');
+    }
 }
 
 // ============================================
@@ -768,5 +950,12 @@ window.eliminarContacto          = eliminarContacto;
 window.filtrarCategoria          = filtrarCategoria;
 window.buscarPatrocinadoresDebounced = buscarPatrocinadoresDebounced;
 window.toggleDescripcionEspecie  = toggleDescripcionEspecie;
+window.toggleCopiarMontoEspecie  = toggleCopiarMontoEspecie;
 window.abrirModalEspecie         = abrirModalEspecie;
 window.cerrarModalEspecie        = cerrarModalEspecie;
+
+window.editarFinanza             = editarFinanza;
+window.cerrarModalFinanza        = cerrarModalFinanza;
+window.guardarFinanza            = guardarFinanza;
+
+window.cambiarTab                = cambiarTab;

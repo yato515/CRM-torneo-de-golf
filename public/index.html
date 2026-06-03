@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Patrocinadores 2025</title>
+    <link rel="stylesheet" href="estilo.css">
+</head>
+
+<body>
+
+<header>
+    <div class="header-container">
+        <h1>CRM Patrocinadores</h1>
+        <div id="headerAcciones" style="display:flex; gap:0.5rem;">
+            <a href="/api/exportar/patrocinadores" class="btn btn-export">
+                📥 Exportar Excel
+            </a>
+            <button class="btn btn-secondary" onclick="abrirModalCategorias()">
+                🏷️ Categorías
+            </button>
+            <button class="btn btn-primary" onclick="abrirModalPatrocinador()">
+                ➕ Nuevo Patrocinador
+            </button>
+        </div>
+    </div>
+
+    <div class="tabs-container">
+        <button class="tab-btn active" id="tab-btn-crm" onclick="cambiarTab('crm')">
+            🤝 Patrocinadores
+        </button>
+        <button class="tab-btn" id="tab-btn-finanzas" onclick="cambiarTab('finanzas')">
+            📊 Resumen Financiero
+        </button>
+    </div>
+</header>
+
+<div id="tab-crm">
+
+    <section class="stats-container">
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalPatrocinadores">0</div>
+                    <div class="stat-label">Patrocinadores</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalMonto">$0</div>
+                    <div class="stat-label">Monto Total Pagado</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💳</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalNotaCredito">$0</div>
+                    <div class="stat-label">Nota de Crédito 2025</div>
+                </div>
+            </div>
+        </div>
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon">📦</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalEspecie">$0</div>
+                    <div class="stat-label">Especie 2025</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalFaltaTransferir">$0</div>
+                    <div class="stat-label">Falta Transferir</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏦</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="totalTransferencia">$0</div>
+                    <div class="stat-label">Transferencias 2025</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="filters-container">
+            <div class="search-box">
+                <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="🔍 Buscar patrocinador, contacto, email o teléfono..."
+                    oninput="buscarPatrocinadoresDebounced()"
+                >
+            </div>
+            <div class="filter-buttons" id="filterButtons"></div>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Patrocinadores</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Patrocinador</th>
+                        <th>Categoría</th>
+                        <th>Monto Transferencia</th>
+                        <th>Nota Crédito</th>
+                        <th>Monto Especie</th>
+                        <th>Total Pagado</th>
+                        <th>Falta Transferir</th>
+                        <th>Descripción</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="patrocinadoresBody"></tbody>
+            </table>
+        </div>
+    </section>
+
+</div><div id="tab-finanzas" style="display:none;">
+
+    <section class="card" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <h2 style="margin:0;">📊 Resumen Financiero 2025</h2>
+        </div>
+
+        <div class="finanzas-resumen-row">
+            <div class="finanza-card finanza-meta">
+                <div class="finanza-icon">🎯</div>
+                <div class="finanza-body">
+                    <div class="finanza-label">Meta Recaudación</div>
+                    <div class="finanza-value" id="fin-meta_recaudacion">$0.00</div>
+                </div>
+                <button class="finanza-edit-btn" onclick="editarFinanza('meta_recaudacion')" title="Editar">✏️</button>
+            </div>
+            <div class="finanza-card finanza-total">
+                <div class="finanza-icon">💵</div>
+                <div class="finanza-body">
+                    <div class="finanza-label">Total Prometido</div>
+                    <div class="finanza-value" id="fin-total_prometido">$0.00</div>
+                </div>
+            </div>
+            <div class="finanza-card" id="fin-resultado-card">
+                <div class="finanza-icon" id="fin-resultado-icon">🏆</div>
+                <div class="finanza-body">
+                    <div class="finanza-label" id="fin-resultado-label">Meta Superada</div>
+                    <div class="finanza-value" id="fin-resultado-valor">$0.00</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="finanzas-grid" id="finanzasGrid"></div>
+    </section>
+
+</div><div class="modal" id="modalPatrocinador">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalPatrocinadorTitle">Nuevo Patrocinador</h2>
+            <button class="close-btn" onclick="cerrarModalPatrocinador()">×</button>
+        </div>
+        <form id="formPatrocinador" onsubmit="guardarPatrocinador(event)">
+            <input type="hidden" id="patrocinadorId">
+            <div class="form-group">
+                <label for="patrocinador">Nombre del Patrocinador *</label>
+                <input type="text" id="patrocinador" required placeholder="Ej: Empresa XYZ">
+            </div>
+            <div class="form-group">
+                <label for="categoria">Categoría *</label>
+                <select id="categoria" required>
+                    <option value="">Seleccionar categoría</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="montoTransferencia">Monto Transferencia</label>
+                    <input type="text" id="montoTransferencia" placeholder="$ 0.00">
+                </div>
+                <div class="form-group">
+                    <label for="notaCredito">Nota de Crédito</label>
+                    <input type="text" id="notaCredito" placeholder="$ 0.00">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="montoEspecie">Monto en Especie</label>
+                    <input type="text" id="montoEspecie" placeholder="$ 0.00">
+                    <div class="especie-toggle-row">
+                        <span>Descripción de especie</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggleEspecie" onchange="toggleDescripcionEspecie()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div id="descripcionEspecieWrapper" style="display:none; margin-top:8px;">
+                        <textarea id="descripcionEspecie" rows="3" placeholder="Describe los bienes o servicios en especie..."></textarea>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="montoPagadoTotal">Monto Pagado Total</label>
+                    <input type="text" id="montoPagadoTotal" placeholder="$ 0.00">
+                    <div class="especie-toggle-row">
+                        <span>Copiar monto especie</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggleCopiarEspecie" onchange="toggleCopiarMontoEspecie()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="faltaTransferir">Falta Transferir</label>
+                <input type="text" id="faltaTransferir" placeholder="$ 0.00">
+            </div>
+            <div class="form-group">
+                <label for="descripcion">Descripción</label>
+                <textarea id="descripcion" rows="3" placeholder="Notas adicionales..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModalPatrocinador()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="modalContactos">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2 id="modalContactosTitle">Contactos</h2>
+            <button class="close-btn" onclick="cerrarContactosModal()">×</button>
+        </div>
+        <div class="contactos-container">
+            <div class="contacto-form-section">
+                <h3>Agregar Contacto</h3>
+                <form id="formContacto" onsubmit="guardarContacto(event)">
+                    <input type="hidden" id="contactoPatrocinadorId">
+                    <input type="hidden" id="contactoId">
+                    <div class="form-group">
+                        <label for="contactoNombre">Nombre *</label>
+                        <input type="text" id="contactoNombre" required placeholder="Nombre completo">
+                    </div>
+                    <div class="form-group">
+                        <label for="contactoEmail">Email</label>
+                        <input type="email" id="contactoEmail" placeholder="correo@ejemplo.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="contactoTelefono">Teléfono</label>
+                        <input type="tel" id="contactoTelefono" placeholder="+52 999 123 4567">
+                    </div>
+                    <button type="submit" id="btnGuardarContacto" class="btn btn-primary btn-block">
+                        ➕ Agregar Contacto
+                    </button>
+                </form>
+            </div>
+            <div class="contactos-list-section">
+                <h3>Contactos Registrados</h3>
+                <div id="listaContactos"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="modalCategorias">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Categorías</h2>
+            <button class="close-btn" onclick="cerrarModalCategorias()">×</button>
+        </div>
+        <div style="margin-bottom:1rem;">
+            <input type="text" id="nuevaCategoriaInput" placeholder="Nueva categoría">
+            <button class="btn btn-primary" onclick="crearCategoria()">➕ Agregar</button>
+        </div>
+        <div id="listaCategorias"></div>
+    </div>
+</div>
+
+<div class="modal" id="modalEspecie">
+    <div class="modal-content" style="max-width:480px;">
+        <div class="modal-header">
+            <h2 id="modalEspecieTitulo">Descripción</h2>
+            <button class="close-btn" onclick="cerrarModalEspecie()">×</button>
+        </div>
+        <div style="padding:1.5rem;">
+            <p id="modalEspecieTexto" style="white-space:pre-wrap; color:#444; line-height:1.6;"></p>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="modalFinanza">
+    <div class="modal-content" style="max-width:420px;">
+        <div class="modal-header">
+            <h2 id="modalFinanzaTitulo">Editar Valor</h2>
+            <button class="close-btn" onclick="cerrarModalFinanza()">×</button>
+        </div>
+        <form onsubmit="guardarFinanza(event)" style="padding:1.5rem;">
+            <input type="hidden" id="finanzaClave">
+            <div class="form-group">
+                <label id="finanzaEtiquetaLabel">Valor</label>
+                <input type="text" id="finanzaValorInput" placeholder="$ 0.00" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModalFinanza()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="app.js"></script>
+
+</body>
+</html>
