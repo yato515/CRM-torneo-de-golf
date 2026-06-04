@@ -12,15 +12,18 @@
 <header>
     <div class="header-container">
         <h1>CRM Patrocinadores</h1>
-        <div id="headerAcciones" style="display:flex; gap:0.5rem;">
-            <a href="/api/exportar/patrocinadores" class="btn btn-export">
+        <div id="headerAcciones" style="display:flex; gap:0.5rem; align-items:center;">
+            <button class="btn btn-export" onclick="exportarExcel()">
                 📥 Exportar Excel
-            </a>
+            </button>
             <button class="btn btn-secondary" onclick="abrirModalCategorias()">
                 🏷️ Categorías
             </button>
             <button class="btn btn-primary" onclick="abrirModalPatrocinador()">
                 ➕ Nuevo Patrocinador
+            </button>
+            <button class="btn btn-logout" onclick="cerrarSesion()" title="Cerrar sesión">
+                🚪 Salir
             </button>
         </div>
     </div>
@@ -106,14 +109,14 @@
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Patrocinador</th>
-                        <th>Categoría</th>
-                        <th>Monto Transferencia</th>
-                        <th>Nota Crédito</th>
-                        <th>Monto Especie</th>
-                        <th>Total Pagado</th>
-                        <th>Falta Transferir</th>
+                        <th class="sortable" onclick="ordenarPor('id')">ID</th>
+                        <th class="sortable" onclick="ordenarPor('patrocinador')">Patrocinador</th>
+                        <th class="sortable" onclick="ordenarPor('categoria')">Categoría</th>
+                        <th class="sortable" onclick="ordenarPor('monto_transferencia')">Monto Transferencia</th>
+                        <th class="sortable" onclick="ordenarPor('nota_credito')">Nota Crédito</th>
+                        <th class="sortable" onclick="ordenarPor('monto_especie')">Monto Especie</th>
+                        <th class="sortable" onclick="ordenarPor('monto_pagado_total')">Total Pagado</th>
+                        <th class="sortable" onclick="ordenarPor('falta_transferir')">Falta Transferir</th>
                         <th>Descripción</th>
                         <th>Acciones</th>
                     </tr>

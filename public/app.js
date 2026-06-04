@@ -3,6 +3,36 @@
 // ============================================
 import supabase from './supabaseClient.js';
 
+// ============================================
+// VERIFICAR SESIÓN — si no hay, redirigir al login
+// ============================================
+const { data: { session } } = await supabase.auth.getSession();
+if (!session) {
+    window.location.href = '/login.html';
+    throw new Error('No autenticado');
+}
+
+// Escuchar cambios de sesión (ej: logout en otra pestaña)
+supabase.auth.onAuthStateChange((event, sess) => {
+    if (event === 'SIGNED_OUT' || !sess) {
+        window.location.href = '/login.html';
+    }
+});
+
+async function cerrarSesion() {
+    await supabase.auth.signOut();
+    window.location.href = '/login.html';
+}
+window.cerrarSesion = cerrarSesion;
+
+// Exportar Excel pasando el token de la sesión
+async function exportarExcel() {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s) return alert('Sesión expirada, vuelve a iniciar sesión');
+    window.location.href = `/api/exportar/patrocinadores?token=${encodeURIComponent(s.access_token)}`;
+}
+window.exportarExcel = exportarExcel;
+
 let patrocinadores = [];
 let contactos_patrocinador = [];
 let categorias = [];
@@ -10,6 +40,8 @@ let finanzas = [];
 let currentFilter = 'all'; // 'all' o categoria.id (número)
 let filteredPatrocinadores = [];
 let debounceTimer = null;
+let sortColumn = null;     // columna activa de ordenamiento
+let sortDirection = 'asc'; // 'asc' o 'desc'
 
 // ============================================
 // INICIALIZAR LA APLICACIÓN
@@ -221,6 +253,62 @@ function aplicarFiltroYBusqueda() {
                 )
             )
         );
+    }
+
+    renderFilteredPatrocinadores();
+}
+
+// ============================================
+// ORDENAMIENTO DE TABLA
+// ============================================
+function ordenarPor(columna) {
+    // Ciclo: ninguno → asc → desc → ninguno (resetear)
+    if (sortColumn === columna) {
+        if (sortDirection === 'asc') {
+            sortDirection = 'desc';
+        } else {
+            // Tercer click: quitar ordenamiento
+            sortColumn = null;
+            sortDirection = 'asc';
+            // Restaurar orden original aplicando filtros vigentes
+            aplicarFiltroYBusqueda();
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+            });
+            return;
+        }
+    } else {
+        sortColumn = columna;
+        sortDirection = 'asc';
+    }
+
+    filteredPatrocinadores.sort((a, b) => {
+        let valA, valB;
+
+        if (columna === 'categoria') {
+            valA = (a.categorias?.nombre || '').toLowerCase();
+            valB = (b.categorias?.nombre || '').toLowerCase();
+        } else if (columna === 'patrocinador') {
+            valA = (a.patrocinador || '').toLowerCase();
+            valB = (b.patrocinador || '').toLowerCase();
+        } else {
+            // Numérico (id, montos)
+            valA = a[columna] || 0;
+            valB = b[columna] || 0;
+        }
+
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    // Actualizar indicadores visuales en los th
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+    });
+    const thActivo = document.querySelector(`th.sortable[onclick="ordenarPor('${columna}')"]`);
+    if (thActivo) {
+        thActivo.classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
     }
 
     renderFilteredPatrocinadores();
@@ -966,6 +1054,7 @@ window.eliminarContacto          = eliminarContacto;
 
 window.filtrarCategoria          = filtrarCategoria;
 window.buscarPatrocinadoresDebounced = buscarPatrocinadoresDebounced;
+window.ordenarPor                = ordenarPor;
 window.toggleDescripcionEspecie  = toggleDescripcionEspecie;
 window.toggleCopiarMontoEspecie  = toggleCopiarMontoEspecie;
 window.abrirModalEspecie         = abrirModalEspecie;

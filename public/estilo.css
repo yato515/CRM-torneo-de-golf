@@ -1,10 +1,25 @@
-/* TU ESTILO ORIGINAL (CONSERVADO Y MEJORADO) */
+/* ============================================
+   PALETA DE COLORES — CLUB DE GOLF PREMIUM
+   ============================================ */
+:root {
+    --color-bg:           #F4F1EA;  /* Fondo principal */
+    --color-card:         #FFFFFF;  /* Tarjetas */
+    --color-dark:         #1F4D3A;  /* Header/Navbar */
+    --color-primary:      #2D6A4F;  /* Botón principal */
+    --color-primary-hover:#40916C;  /* Hover botón principal */
+    --color-accent:       #C89B5B;  /* Botón secundario (dorado) */
+    --color-accent-hover: #A87E42;  /* Hover botón secundario */
+    --color-text:         #1E293B;  /* Texto principal */
+    --color-text-soft:    #64748B;  /* Texto secundario */
+    --color-border:       #E5E0D5;  /* Bordes suaves */
+}
+
 body {
-    font-family: Arial, Helvetica, sans-serif;
-    background: #f5f5f5;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    background: var(--color-bg);
     margin: 0;
     padding: 0;
-    color: #222;
+    color: var(--color-text);
 }
 
 h1 {
@@ -36,37 +51,118 @@ h3 {
 
 table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     margin-top: 10px;
+    background: var(--color-card);
+    border-radius: 10px;
+    overflow: hidden;
 }
 
 th, td {
-    border: 1px solid #ddd;
-    padding: 10px;
+    border: none;
+    padding: 14px 16px;
     text-align: left;
+    vertical-align: middle;
+}
+
+/* Separadores verticales sutiles entre columnas */
+tbody td:not(:last-child) {
+    border-right: 1px solid #f1ede2;
+}
+
+th:not(:last-child) {
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Separador horizontal sutil entre filas */
+tbody tr {
+    border-bottom: 1px solid #eef0ec;
+    transition: background 0.15s ease;
+}
+
+tbody tr:last-child {
+    border-bottom: none;
 }
 
 th {
-    background: #f0f0f0;
+    background: var(--color-dark);
+    color: white;
     font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 14px 16px;
 }
 
-tr:nth-child(even) {
-    background: #fafafa;
+/* Columnas ordenables */
+th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease;
+    position: relative;
 }
 
-tr:hover {
-    background: #f1f7ff;
+th.sortable:hover {
+    background: #25593f;
+}
+
+th.sortable::after {
+    content: "↕";
+    margin-left: 0.4rem;
+    opacity: 0.35;
+    font-size: 0.85rem;
+    transition: opacity 0.15s ease;
+}
+
+th.sortable:hover::after {
+    opacity: 0.7;
+}
+
+th.sort-asc::after {
+    content: "↑";
+    opacity: 1;
+    color: var(--color-accent);
+}
+
+th.sort-desc::after {
+    content: "↓";
+    opacity: 1;
+    color: var(--color-accent);
+}
+
+/* Esquinas redondeadas en encabezados */
+th:first-child {
+    border-top-left-radius: 10px;
+}
+
+th:last-child {
+    border-top-right-radius: 10px;
+}
+
+/* Zebra striping muy sutil */
+tbody tr:nth-child(even) {
+    background: #fbfaf6;
+}
+
+tbody tr:hover {
+    background: #f0ebdc;
 }
 
 /* NUEVOS ESTILOS AGREGADOS */
 
 /* Header */
 header {
-    background: white;
+    background: var(--color-dark);
     padding: 1.5rem 0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     margin-bottom: 1rem;
+    color: white;
+}
+
+header h1 {
+    color: white;
+    margin: 0;
 }
 
 .header-container {
@@ -166,8 +262,8 @@ header {
 
 .search-box input:focus {
     outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    border-color: #2D6A4F;
+    box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.15);
 }
 
 .filter-buttons {
@@ -193,9 +289,9 @@ header {
 }
 
 .filter-btn.active {
-    background: #2563eb;
+    background: #2D6A4F;
     color: white;
-    border-color: #2563eb;
+    border-color: #2D6A4F;
 }
 
 /* Table Container para scroll horizontal en móvil */
@@ -218,32 +314,44 @@ header {
 }
 
 .btn-primary {
-    background: #2563eb;
+    background: #2D6A4F;
     color: white;
 }
 
 .btn-primary:hover {
-    background: #1e40af;
+    background: #1B4332;
     transform: translateY(-1px);
 }
 
 .btn-secondary {
-    background: #64748b;
+    background: var(--color-accent);
     color: white;
 }
 
 .btn-secondary:hover {
-    background: #475569;
+    background: var(--color-accent-hover);
 }
 
 .btn-export {
-    background: #15803d;
+    background: var(--color-dark);
     color: white;
     text-decoration: none;
 }
 
 .btn-export:hover {
-    background: #116932;
+    background: var(--color-primary);
+}
+
+.btn-logout {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.btn-logout:hover {
+    background: rgba(255, 255, 255, 0.95);
+    color: #b91c1c;
+    border-color: transparent;
 }
 
 .btn-block {
@@ -251,65 +359,92 @@ header {
     justify-content: center;
 }
 
-/* Botones de acción en tabla */
+/* Botones de acción en tabla — íconos sutiles tipo CRM moderno */
 .action-buttons {
     display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    gap: 0.35rem;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
 }
 
 .btn-action {
-    padding: 0.4rem 0.75rem;
-    border: 1px solid #ddd;
-    background: white;
-    border-radius: 6px;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 1rem;
-    transition: all 0.2s;
+    transition: all 0.18s ease;
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
+    justify-content: center;
+    color: var(--color-text);
+    position: relative;
+    filter: grayscale(0.25);
 }
 
 .btn-action:hover {
+    filter: grayscale(0);
     transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
 }
 
-.btn-contactos {
-    background: #f0f9ff;
-    border-color: #bae6fd;
+/* Contactos: verde fuerte al hover */
+.btn-contactos_patrocinador {
+    width: auto;
+    min-width: 34px;
+    padding: 0 0.6rem;
+    gap: 0.4rem;
+    background: #ecfdf5;
+    border-color: #a7f3d0;
 }
 
-.btn-contactos:hover {
-    background: #e0f2fe;
+.btn-contactos_patrocinador:hover {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
 }
 
+.btn-contactos_patrocinador:hover .badge-count {
+    background: white;
+    color: var(--color-primary);
+}
+
+/* Editar: dorado fuerte al hover */
 .btn-edit {
-    background: #fef3c7;
-    border-color: #fde68a;
+    background: #fefbf3;
+    border-color: #f1d9a8;
 }
 
 .btn-edit:hover {
-    background: #fef08a;
+    background: var(--color-accent);
+    border-color: var(--color-accent);
 }
 
+/* Eliminar: rojo fuerte al hover */
 .btn-delete {
-    background: #fee2e2;
+    background: #fef2f2;
     border-color: #fecaca;
 }
 
 .btn-delete:hover {
-    background: #fecaca;
+    background: #dc2626;
+    border-color: #dc2626;
 }
 
 .badge-count {
-    background: #2563eb;
+    background: var(--color-primary);
     color: white;
-    padding: 0.125rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+    line-height: 1.3;
 }
 
 /* Badges de categorías */
@@ -399,10 +534,12 @@ header {
     font-weight: 700;
 }
 
-/* Total pagado destacado */
+/* Total pagado destacado — dato más importante de la fila */
 .monto-total {
-    color: #0f172a;
-    font-size: 1rem;
+    color: var(--color-dark);
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
 }
 
 /* ID en columna gris claro */
@@ -441,8 +578,8 @@ header {
 }
 
 .celda-clicable:hover {
-    color: #2563eb;
-    border-bottom-color: #2563eb;
+    color: #2D6A4F;
+    border-bottom-color: #2D6A4F;
 }
 
 /* Botón compacto para abrir descripción */
@@ -580,8 +717,8 @@ form {
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    border-color: #2D6A4F;
+    box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.15);
 }
 
 .form-group textarea {
@@ -620,7 +757,7 @@ form {
 }
 
 .contacto-item:hover {
-    border-color: #2563eb;
+    border-color: #2D6A4F;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
@@ -671,8 +808,8 @@ form {
 
 .categoria-form input:focus {
     outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    border-color: #2D6A4F;
+    box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.15);
 }
 
 .categoria-lista {
@@ -696,7 +833,7 @@ form {
 }
 
 .categoria-lista .contacto-card:hover {
-    border-color: #2563eb;
+    border-color: #2D6A4F;
 }
 
 /* Toast */
@@ -882,7 +1019,7 @@ form {
     gap: 0;
     padding: 0 30px;
     margin-top: 0.75rem;
-    border-bottom: 2px solid #e2e8f0;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.15);
 }
 
 .tab-btn {
@@ -893,7 +1030,7 @@ form {
     margin-bottom: -2px;
     font-size: 0.95rem;
     font-weight: 600;
-    color: #64748b;
+    color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -902,14 +1039,14 @@ form {
 }
 
 .tab-btn:hover {
-    color: #2563eb;
-    background: #f8faff;
+    color: white;
+    background: rgba(255, 255, 255, 0.08);
     border-radius: 6px 6px 0 0;
 }
 
 .tab-btn.active {
-    color: #2563eb;
-    border-bottom-color: #2563eb;
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
 }
 
 /* ============================================

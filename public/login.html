@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión — CRM Patrocinadores</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="login-logo">⛳</div>
+            <h1>CRM Patrocinadores</h1>
+            <p class="login-subtitle">Iniciar sesión</p>
+        </div>
+
+        <form id="loginForm" class="login-form">
+            <div class="input-group">
+                <span class="input-icon">📧</span>
+                <input
+                    type="email"
+                    id="email"
+                    placeholder="Correo electrónico"
+                    autocomplete="email"
+                    required
+                >
+            </div>
+
+            <div class="input-group">
+                <span class="input-icon">🔒</span>
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Contraseña"
+                    autocomplete="current-password"
+                    required
+                >
+            </div>
+
+            <div class="login-options">
+                <label class="remember">
+                    <input type="checkbox" id="remember" checked>
+                    <span>Recordarme</span>
+                </label>
+            </div>
+
+            <button type="submit" id="loginBtn" class="login-btn">
+                Iniciar Sesión
+            </button>
+
+            <div id="loginError" class="login-error" style="display:none;"></div>
+        </form>
+
+        <p class="login-footer">
+            Acceso exclusivo para personal autorizado
+        </p>
+    </div>
+</div>
+
+<script type="module" src="login.js"></script>
+
+</body>
+</html>

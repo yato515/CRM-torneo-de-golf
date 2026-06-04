@@ -4,13 +4,34 @@ const { createClient } = require('@supabase/supabase-js');
 
 const router = express.Router();
 
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
-);
+// Middleware: valida que el request venga de un usuario autenticado
+async function requireAuth(req, res, next) {
+    const token = req.query.token || req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+        return res.status(401).json({ error: 'No autenticado' });
+    }
 
-router.get('/exportar/patrocinadores', async (req, res) => {
+    // Cliente temporal con el JWT del usuario para validarlo
+    const supabaseAuth = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_KEY,
+        { global: { headers: { Authorization: `Bearer ${token}` } } }
+    );
+
+    const { data: { user }, error } = await supabaseAuth.auth.getUser();
+    if (error || !user) {
+        return res.status(401).json({ error: 'Sesión inválida' });
+    }
+
+    // Pasamos el cliente autenticado al siguiente handler — RLS aplicará
+    req.supabase = supabaseAuth;
+    next();
+}
+
+router.get('/exportar/patrocinadores', requireAuth, async (req, res) => {
     try {
+        const supabase = req.supabase;
+
         const { data: patrocinadores, error: errPat } = await supabase
             .from('patrocinadores_2025')
             .select('*, categorias(nombre)')

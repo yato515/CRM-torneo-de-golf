@@ -1,0 +1,235 @@
+/* ============================================
+   LOGIN — Estilo Club de Golf Premium
+   ============================================ */
+:root {
+    --color-bg:           #F8F5F0;
+    --color-card:         #FFFFFF;
+    --color-dark:         #1B4332;
+    --color-primary:      #2D6A4F;
+    --color-primary-hover:#40916C;
+    --color-accent:       #D4A373;
+    --color-text:         #2B2D42;
+    --color-text-soft:    #6B7280;
+    --color-border:       #E5E0D5;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: var(--color-text);
+}
+
+.login-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1B4332 0%, #2D6A4F 50%, #40916C 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Patrón decorativo de fondo */
+.login-page::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle at 20% 30%, rgba(212, 163, 115, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(212, 163, 115, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.login-card {
+    background: var(--color-card);
+    width: 100%;
+    max-width: 420px;
+    padding: 2.5rem 2.25rem;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+    position: relative;
+    z-index: 1;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.login-logo {
+    font-size: 3rem;
+    width: 80px;
+    height: 80px;
+    background: var(--color-bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    border: 3px solid var(--color-accent);
+}
+
+.login-header h1 {
+    font-size: 1.5rem;
+    color: var(--color-dark);
+    margin: 0 0 0.25rem 0;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.login-subtitle {
+    color: var(--color-text-soft);
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+/* ============================================
+   FORMULARIO
+   ============================================ */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+.input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    font-size: 1rem;
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 0.9rem 1rem 0.9rem 2.75rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: 10px;
+    font-size: 1rem;
+    font-family: inherit;
+    background: #fafafa;
+    color: var(--color-text);
+    transition: all 0.2s;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.12);
+}
+
+.input-group input:focus + .input-icon,
+.input-group:focus-within .input-icon {
+    opacity: 1;
+}
+
+/* Remember + olvidé contraseña */
+.login-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.85rem;
+}
+
+.remember {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-text-soft);
+    cursor: pointer;
+    user-select: none;
+}
+
+.remember input {
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
+/* Botón principal */
+.login-btn {
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    padding: 0.95rem;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 0.4rem;
+    letter-spacing: 0.02em;
+}
+
+.login-btn:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(45, 106, 79, 0.35);
+}
+
+.login-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Mensaje de error */
+.login-error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+/* Footer */
+.login-footer {
+    text-align: center;
+    color: var(--color-text-soft);
+    font-size: 0.75rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0;
+    letter-spacing: 0.02em;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .login-card {
+        padding: 2rem 1.5rem;
+    }
+
+    .login-logo {
+        width: 64px;
+        height: 64px;
+        font-size: 2.25rem;
+    }
+
+    .login-header h1 {
+        font-size: 1.25rem;
+    }
+}
