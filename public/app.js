@@ -21,6 +21,8 @@ supabase.auth.onAuthStateChange((event, sess) => {
 
 async function cerrarSesion() {
     await supabase.auth.signOut();
+    // Limpiar también el flag de "recordarme" y cualquier residuo
+    localStorage.removeItem('cf_remember_me');
     window.location.href = '/login.html';
 }
 window.cerrarSesion = cerrarSesion;
@@ -46,7 +48,7 @@ let sortDirection = 'asc'; // 'asc' o 'desc'
 // ============================================
 // INICIALIZAR LA APLICACIÓN
 // ============================================
-document.addEventListener('DOMContentLoaded', async () => {
+async function inicializarApp() {
     // Cargar datos en paralelo (4 fetches simultáneos en vez de uno tras otro)
     await Promise.all([
         cargarPatrocinadores(),
@@ -59,6 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderBotonesCategorias();
     actualizarEstadisticas();
     renderFilteredPatrocinadores();
+    renderFinanzas(); // ya tenemos patrocinadores cargados para calcular el total auto
 
     // Aplicar formateo de moneda a los campos del modal
     const camposMoneda = [
@@ -72,23 +75,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     camposMoneda.forEach(id => {
         const input = document.getElementById(id);
         if (!input) return;
-
-        // Formato mientras escribe
-        input.addEventListener('input', () => formatearInputMoneda(input));
-
-        // Al salir del campo: formato completo con 2 decimales
-        input.addEventListener('blur', () => {
-            const num = parsearMoneda(input.value);
-            input.value = num === 0 ? '' : formatearMonedaCompleta(num);
-        });
-
-        // Al entrar al campo: mostrar solo el número para facilitar edición
-        input.addEventListener('focus', () => {
-            const num = parsearMoneda(input.value);
-            input.value = num === 0 ? '' : num.toString();
-        });
+        configurarInputMoneda(input);
     });
-});
+}
+
+// Ejecutar init de forma segura:
+// como este módulo usa top-level await (getSession), DOMContentLoaded puede
+// haberse disparado YA. Si el DOM está listo, arrancamos directo; si no, esperamos.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarApp);
+} else {
+    inicializarApp();
+}
+
+// ============================================
+// HELPER: configurar input de moneda
+// Mantiene la posición del cursor estable mientras editas
+// ============================================
+function configurarInputMoneda(input) {
+    // Al entrar al campo: mostrar número crudo (sin $ ni comas) → fácil de editar
+    input.addEventListener('focus', () => {
+        const num = parsearMoneda(input.value);
+        input.value = num === 0 ? '' : num.toString();
+        input.select(); // selecciona todo para reemplazar rápido si lo desea
+    });
+
+    // Mientras escribe: solo limpiar caracteres inválidos, SIN formatear
+    // (esto evita que el cursor salte al final en cada tecla)
+    input.addEventListener('input', () => {
+        let raw = input.value.replace(/[^0-9.]/g, '');
+        const parts = raw.split('.');
+        if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
+        if (input.value !== raw) {
+            const prevPos = input.selectionStart || 0;
+            const diff    = input.value.length - raw.length;
+            const newPos  = Math.max(0, prevPos - diff);
+            input.value = raw;
+            try { input.setSelectionRange(newPos, newPos); } catch (_) {}
+        }
+    });
+
+    // Al salir del campo: aplicar formato completo "$ 10,500.00"
+    input.addEventListener('blur', () => {
+        const num = parsearMoneda(input.value);
+        input.value = num === 0 ? '' : formatearMonedaCompleta(num);
+    });
+}
 
 // ============================================
 // CARGAR CATEGORÍAS DESDE LA TABLA categorias
@@ -129,26 +161,26 @@ function cargarOpcionesCategoria() {
 
 function renderBotonesCategorias() {
     const container = document.getElementById('filterButtons');
-
-    // total general
     const total = patrocinadores.length;
 
-    container.innerHTML = `
-        <button class="filter-btn active" onclick="filtrarCategoria('all')">
-            Todos <span class="badge-count">${total}</span>
-        </button>
-    `;
+    // Botón "Todos"
+    const btnTodos = document.createElement('button');
+    btnTodos.className = 'filter-btn' + (currentFilter === 'all' ? ' active' : '');
+    btnTodos.dataset.cat = 'all';
+    btnTodos.innerHTML = `Todos <span class="badge-count">${total}</span>`;
+    btnTodos.onclick = () => filtrarCategoria('all');
 
+    container.innerHTML = '';
+    container.appendChild(btnTodos);
+
+    // Botones por categoría
     categorias.forEach(c => {
-        // contar patrocinadores por categoria
-        const count = patrocinadores.filter(p => p.categoria_id === c.id).length;
+        const count = patrocinadores.filter(p => Number(p.categoria_id) === Number(c.id)).length;
 
         const btn = document.createElement('button');
-        btn.className = 'filter-btn';
-        btn.innerHTML = `
-            ${c.nombre}
-            <span class="badge-count">${count}</span>
-        `;
+        btn.className = 'filter-btn' + (Number(currentFilter) === Number(c.id) ? ' active' : '');
+        btn.dataset.cat = c.id;
+        btn.innerHTML = `${escapeHtml(c.nombre)} <span class="badge-count">${count}</span>`;
         btn.onclick = () => filtrarCategoria(c.id);
 
         container.appendChild(btn);
@@ -204,44 +236,28 @@ async function cargarContactos() {
 function filtrarCategoria(categoriaId) {
     currentFilter = categoriaId;
 
-    if (categoriaId === 'all') {
-        filteredPatrocinadores = [...patrocinadores];
-    } else {
-        filteredPatrocinadores = patrocinadores.filter(p => 
-            Number(p.categoria_id) === Number(categoriaId)
-        );
-    }
-
-    // actualizar botones activos (visual)
+    // Marcar el botón activo comparando su data-cat (robusto, sin leer el código)
     document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('active');
+        btn.classList.toggle('active', String(btn.dataset.cat) === String(categoriaId));
     });
 
-    // marcar el activo
-    const botones = document.querySelectorAll('.filter-btn');
-    botones.forEach(btn => {
-        if (
-            (categoriaId === 'all' && btn.textContent.includes('Todos')) ||
-            btn.onclick?.toString().includes(categoriaId)
-        ) {
-            btn.classList.add('active');
-        }
-    });
-
-    renderFilteredPatrocinadores();
+    // Aplica filtro + búsqueda vigente (respeta lo que haya escrito en el buscador)
+    aplicarFiltroYBusqueda();
 }
 
+// Aplica el filtro de categoría activo + el término de búsqueda actual.
+// Una sola fuente de verdad para filtrar (evita duplicar la lógica).
 function aplicarFiltroYBusqueda() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
 
-    if (currentFilter !== 'all') {
-        filteredPatrocinadores = patrocinadores.filter(p => p.categoria_id === currentFilter);
-    } else {
-        filteredPatrocinadores = [...patrocinadores];
-    }
+    // 1) Filtro por categoría
+    let resultado = currentFilter !== 'all'
+        ? patrocinadores.filter(p => Number(p.categoria_id) === Number(currentFilter))
+        : [...patrocinadores];
 
+    // 2) Filtro por término de búsqueda (nombre, descripción, categoría o contactos)
     if (searchTerm) {
-        filteredPatrocinadores = filteredPatrocinadores.filter(p =>
+        resultado = resultado.filter(p =>
             p.patrocinador.toLowerCase().includes(searchTerm) ||
             (p.descripcion && p.descripcion.toLowerCase().includes(searchTerm)) ||
             (p.categorias?.nombre && p.categorias.nombre.toLowerCase().includes(searchTerm)) ||
@@ -255,6 +271,7 @@ function aplicarFiltroYBusqueda() {
         );
     }
 
+    filteredPatrocinadores = resultado;
     renderFilteredPatrocinadores();
 }
 
@@ -314,40 +331,10 @@ function ordenarPor(columna) {
     renderFilteredPatrocinadores();
 }
 
+// Búsqueda con debounce: espera 300ms tras la última tecla antes de filtrar
 function buscarPatrocinadoresDebounced() {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-        if (currentFilter !== 'all') {
-            aplicarFiltroYBusqueda();
-        } else {
-            buscarPatrocinadores();
-        }
-    }, 300);
-}
-
-function buscarPatrocinadores() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-
-    filteredPatrocinadores = currentFilter !== 'all'
-        ? patrocinadores.filter(p => p.categoria_id === currentFilter)
-        : [...patrocinadores];
-
-    if (searchTerm) {
-        filteredPatrocinadores = filteredPatrocinadores.filter(p =>
-            p.patrocinador.toLowerCase().includes(searchTerm) ||
-            (p.descripcion && p.descripcion.toLowerCase().includes(searchTerm)) ||
-            (p.categorias?.nombre && p.categorias.nombre.toLowerCase().includes(searchTerm)) ||
-            contactos_patrocinador.some(c =>
-                c.patrocinador_id === p.id && (
-                    (c.nombre && c.nombre.toLowerCase().includes(searchTerm)) ||
-                    (c.email && c.email.toLowerCase().includes(searchTerm)) ||
-                    (c.telefono && c.telefono.toString().toLowerCase().includes(searchTerm))
-                )
-            )
-        );
-    }
-
-    renderFilteredPatrocinadores();
+    debounceTimer = setTimeout(aplicarFiltroYBusqueda, 300);
 }
 
 // ============================================
@@ -540,6 +527,7 @@ async function guardarPatrocinador(event) {
         renderBotonesCategorias(); // recalcula contadores sin tocar la DB
         actualizarEstadisticas();
         renderFilteredPatrocinadores();
+        renderFinanzas(); // refresca Total NC + Transferencias automático
 
     } catch (error) {
         console.error('Error guardando patrocinador:', error);
@@ -594,6 +582,7 @@ async function eliminarPatrocinador(id, nombre) {
         renderBotonesCategorias();
         actualizarEstadisticas();
         renderFilteredPatrocinadores();
+        renderFinanzas(); // refresca Total NC + Transferencias automático
     } catch (error) {
         console.error('Error eliminando patrocinador:', error);
         mostrarToast('Error al eliminar patrocinador', 'error');
@@ -803,22 +792,6 @@ function formatCurrencyMuted(value) {
     return formatCurrency(value);
 }
 
-// Formatea mientras el usuario escribe (ej: "$ 1,234.5")
-function formatearInputMoneda(input) {
-    let raw = input.value.replace(/[^0-9.]/g, '');
-    const parts = raw.split('.');
-    if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
-
-    if (!raw || raw === '.') { input.value = raw ? '$ 0.' : ''; return; }
-
-    const [intPart, decPart] = raw.split('.');
-    const intFormateado = parseInt(intPart || '0', 10)
-        .toString()
-        .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-
-    input.value = '$ ' + intFormateado + (decPart !== undefined ? '.' + decPart : '');
-}
-
 // Formato completo al salir del campo (ej: "$ 1,234.50")
 function formatearMonedaCompleta(num) {
     return '$ ' + num.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -915,15 +888,21 @@ function cambiarTab(tab) {
 // MÓDULO FINANZAS
 // ============================================
 
-// Campos editables (todos menos los calculados)
+// Campos editables manualmente
 const FINANZAS_EDITABLES = [
-    { clave: 'total_nc_transferencias', etiqueta: 'Total NC + Transferencias', icono: '🏦' },
     { clave: 'jugadores_inscripciones', etiqueta: 'Jugadores Inscripciones Portal', icono: '⛳' },
     { clave: 'pago_previo_cenas',       etiqueta: 'Pago Previo de Acceso Cenas', icono: '🍽️' },
     { clave: 'ingresos_cena_jugadores', etiqueta: 'Ingresos Día de Cena Jugadores', icono: '🎟️' },
     { clave: 'ingresos_cena_quizz',     etiqueta: 'Ingresos Cena Quizz It', icono: '🧠' },
     { clave: 'ingresos_activaciones',   etiqueta: 'Ingresos Activaciones', icono: '🎪' },
 ];
+
+// Campo calculado automáticamente desde patrocinadores_2025
+function getTotalNCTransferencias() {
+    return patrocinadores.reduce((sum, p) =>
+        sum + (Number(p.nota_credito) || 0) + (Number(p.monto_transferencia) || 0)
+    , 0);
+}
 
 async function cargarFinanzas() {
     try {
@@ -934,7 +913,7 @@ async function cargarFinanzas() {
 
         if (error) throw error;
         finanzas = data || [];
-        renderFinanzas();
+        // renderFinanzas() lo llama quien necesite refresco (DOMContentLoaded, save, etc.)
     } catch (error) {
         console.error('Error cargando finanzas:', error);
         mostrarToast('Error al cargar finanzas', 'error');
@@ -948,9 +927,11 @@ function getFinanzaValor(clave) {
 
 function renderFinanzas() {
     // Calcular totales
-    const meta = getFinanzaValor('meta_recaudacion');
-    const totalPrometido = FINANZAS_EDITABLES.reduce((sum, f) => sum + getFinanzaValor(f.clave), 0);
-    const diferencia = totalPrometido - meta;
+    const meta             = getFinanzaValor('meta_recaudacion');
+    const totalNCTransf    = getTotalNCTransferencias();
+    const totalManual      = FINANZAS_EDITABLES.reduce((sum, f) => sum + getFinanzaValor(f.clave), 0);
+    const totalPrometido   = totalNCTransf + totalManual;
+    const diferencia       = totalPrometido - meta;
 
     // Tarjeta meta
     document.getElementById('fin-meta_recaudacion').textContent = formatCurrency(meta);
@@ -970,9 +951,22 @@ function renderFinanzas() {
     resultValor.textContent = formatCurrency(Math.abs(diferencia));
     resultValor.style.color = diferencia >= 0 ? '#15803d' : '#dc2626';
 
-    // Grid de ingresos individuales
+    // Grid: primero el campo AUTO (no editable), luego los manuales
     const grid = document.getElementById('finanzasGrid');
-    grid.innerHTML = FINANZAS_EDITABLES.map(f => {
+
+    const tarjetaAuto = `
+        <div class="finanza-ingreso-card finanza-auto">
+            <div class="finanza-icon">🏦</div>
+            <div class="finanza-body">
+                <div class="finanza-label">
+                    Total NC + Transferencias
+                    <span class="finanza-auto-tag" title="Se calcula automáticamente">AUTO</span>
+                </div>
+                <div class="finanza-value">${formatCurrency(totalNCTransf)}</div>
+            </div>
+        </div>`;
+
+    const tarjetasManuales = FINANZAS_EDITABLES.map(f => {
         const valor = getFinanzaValor(f.clave);
         return `
             <div class="finanza-ingreso-card">
@@ -984,6 +978,8 @@ function renderFinanzas() {
                 <button class="finanza-edit-btn" onclick="editarFinanza('${f.clave}')" title="Editar">✏️</button>
             </div>`;
     }).join('');
+
+    grid.innerHTML = tarjetaAuto + tarjetasManuales;
 }
 
 function editarFinanza(clave) {
@@ -996,14 +992,22 @@ function editarFinanza(clave) {
     document.getElementById('finanzaClave').value = clave;
     document.getElementById('modalFinanzaTitulo').textContent = `Editar: ${etiqueta}`;
     document.getElementById('finanzaEtiquetaLabel').textContent = etiqueta;
-    document.getElementById('finanzaValorInput').value = valorActual ? formatearMonedaCompleta(valorActual) : '';
+    const input = document.getElementById('finanzaValorInput');
+    input.value = valorActual ? formatearMonedaCompleta(valorActual) : '';
+
+    // Limpiar listeners previos y configurar el formateo estable
+    input.oninput = null;
+    input.onblur = null;
+    input.onfocus = null;
+    if (!input._monedaConfig) {
+        configurarInputMoneda(input);
+        input._monedaConfig = true;
+    }
+
     document.getElementById('modalFinanza').style.display = 'flex';
 
-    // Aplicar formateo al input
-    const input = document.getElementById('finanzaValorInput');
-    input.oninput = () => formatearInputMoneda(input);
-    input.onblur  = () => { const n = parsearMoneda(input.value); input.value = n === 0 ? '' : formatearMonedaCompleta(n); };
-    input.onfocus = () => { const n = parsearMoneda(input.value); input.value = n === 0 ? '' : n.toString(); };
+    // Auto-focus para empezar a editar de inmediato
+    setTimeout(() => input.focus(), 50);
 }
 
 function cerrarModalFinanza() {
@@ -1015,17 +1019,23 @@ async function guardarFinanza(event) {
     const clave = document.getElementById('finanzaClave').value;
     const valor = parsearMoneda(document.getElementById('finanzaValorInput').value);
 
+    // Determinar la etiqueta correcta (la columna es NOT NULL en la BD)
+    const etiqueta = clave === 'meta_recaudacion'
+        ? 'Meta Recaudación'
+        : (FINANZAS_EDITABLES.find(f => f.clave === clave)?.etiqueta || clave);
+
     try {
         // Upsert: actualiza si existe, inserta si no
         const { error } = await supabase
             .from('finanzas_2025')
-            .upsert({ clave, valor }, { onConflict: 'clave' });
+            .upsert({ clave, valor, etiqueta }, { onConflict: 'clave' });
 
         if (error) throw error;
 
         mostrarToast('Valor actualizado correctamente', 'success');
         cerrarModalFinanza();
         await cargarFinanzas();
+        renderFinanzas();
     } catch (error) {
         console.error('Error guardando finanza:', error);
         mostrarToast('Error al guardar', 'error');

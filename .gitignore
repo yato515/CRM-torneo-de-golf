@@ -15,3 +15,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Archivos de datos con información privada (NO subir a repo público)
+*.sql
+*.xlsx
+*.csv

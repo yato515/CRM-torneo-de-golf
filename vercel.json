@@ -12,6 +12,17 @@
     ],
     "routes": [
         { "src": "/api/(.*)", "dest": "server.js" },
+        {
+            "src": "/(.*)",
+            "continue": true,
+            "headers": {
+                "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; form-action 'self'; base-uri 'self'",
+                "X-Content-Type-Options": "nosniff",
+                "X-Frame-Options": "DENY",
+                "Referrer-Policy": "strict-origin-when-cross-origin",
+                "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+            }
+        },
         { "src": "/", "dest": "/public/index.html" },
         { "src": "/(.*)", "dest": "/public/$1" }
     ]

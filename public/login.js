@@ -18,14 +18,24 @@ form.addEventListener('submit', async (e) => {
 
     const email    = emailInp.value.trim();
     const password = passInp.value;
+    const recordar = document.getElementById('remember').checked;
 
     if (!email || !password) {
         mostrarError('Por favor completa todos los campos');
         return;
     }
 
+    if (password.length < 8) {
+        mostrarError('La contraseña debe tener al menos 8 caracteres');
+        return;
+    }
+
     btn.disabled = true;
     btn.textContent = 'Iniciando sesión...';
+
+    // IMPORTANTE: setear el flag ANTES del login para que Supabase
+    // guarde la sesión en el storage correcto
+    localStorage.setItem('cf_remember_me', recordar ? '1' : '0');
 
     try {
         const { data, error } = await supabase.auth.signInWithPassword({

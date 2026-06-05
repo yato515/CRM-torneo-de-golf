@@ -1,17 +1,18 @@
 /* ============================================
-   PALETA DE COLORES — CLUB DE GOLF PREMIUM
+   PALETA — CHARCOAL + BRONZE + IVORY
+   Editorial luxury (Apple Store, Tom Ford, Aesop)
    ============================================ */
 :root {
-    --color-bg:           #F4F1EA;  /* Fondo principal */
+    --color-bg:           #FAFAF7;  /* Ivory cálido — fondo principal */
     --color-card:         #FFFFFF;  /* Tarjetas */
-    --color-dark:         #1F4D3A;  /* Header/Navbar */
-    --color-primary:      #2D6A4F;  /* Botón principal */
-    --color-primary-hover:#40916C;  /* Hover botón principal */
-    --color-accent:       #C89B5B;  /* Botón secundario (dorado) */
-    --color-accent-hover: #A87E42;  /* Hover botón secundario */
-    --color-text:         #1E293B;  /* Texto principal */
-    --color-text-soft:    #64748B;  /* Texto secundario */
-    --color-border:       #E5E0D5;  /* Bordes suaves */
+    --color-dark:         #1A1A1A;  /* Carbón rico — header/navbar */
+    --color-primary:      #B89469;  /* Bronce — botón principal */
+    --color-primary-hover:#9B7B53;  /* Bronce oscuro — hover */
+    --color-accent:       #2C2C2C;  /* Grafito — acentos en light bg */
+    --color-accent-hover: #404040;  /* Grafito hover */
+    --color-text:         #1F1F1F;  /* Negro suave */
+    --color-text-soft:    #6B6B6B;  /* Gris muted */
+    --color-border:       #E8E5DE;  /* Borde cálido claro */
 }
 
 body {
@@ -104,7 +105,7 @@ th.sortable {
 }
 
 th.sortable:hover {
-    background: #25593f;
+    background: #2A2A2A;
 }
 
 th.sortable::after {
@@ -146,7 +147,7 @@ tbody tr:nth-child(even) {
 }
 
 tbody tr:hover {
-    background: #f0ebdc;
+    background: #F0EDE6;
 }
 
 /* NUEVOS ESTILOS AGREGADOS */
@@ -313,45 +314,63 @@ header h1 {
     gap: 0.5rem;
 }
 
+/* Botón principal: bronce sólido — acción más importante */
 .btn-primary {
-    background: #2D6A4F;
+    background: var(--color-primary);
     color: white;
+    border: 1px solid var(--color-primary);
+    box-shadow: 0 2px 8px rgba(184, 148, 105, 0.35);
+    letter-spacing: 0.02em;
 }
 
 .btn-primary:hover {
-    background: #1B4332;
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(184, 148, 105, 0.45);
 }
 
+/* Botón secundario: outline bronce — acción secundaria, mantiene jerarquía */
 .btn-secondary {
-    background: var(--color-accent);
-    color: white;
+    background: transparent;
+    color: var(--color-primary);
+    border: 1.5px solid var(--color-primary);
+    box-shadow: none;
 }
 
 .btn-secondary:hover {
-    background: var(--color-accent-hover);
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
 }
 
+/* Botón exportar: outline blanco sutil */
 .btn-export {
-    background: var(--color-dark);
-    color: white;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.4);
     text-decoration: none;
 }
 
 .btn-export:hover {
-    background: var(--color-primary);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: translateY(-1px);
 }
 
 .btn-logout {
     background: transparent;
-    color: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .btn-logout:hover {
-    background: rgba(255, 255, 255, 0.95);
-    color: #b91c1c;
-    border-color: transparent;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border-color: rgba(239, 68, 68, 0.9);
+    transform: translateY(-1px);
 }
 
 .btn-block {
@@ -1045,8 +1064,8 @@ form {
 }
 
 .tab-btn.active {
-    color: var(--color-accent);
-    border-bottom-color: var(--color-accent);
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
 }
 
 /* ============================================
@@ -1182,6 +1201,30 @@ form {
 
 .finanza-ingreso-card .finanza-value {
     font-size: 1.1rem;
+}
+
+/* Tarjeta calculada automáticamente (Total NC + Transferencias) */
+.finanza-ingreso-card.finanza-auto {
+    background: linear-gradient(135deg, #FBF7F0 0%, #F0E8DA 100%);
+    border-color: #D4C4AB;
+}
+
+.finanza-ingreso-card.finanza-auto .finanza-icon {
+    background: var(--color-primary);
+    color: white;
+}
+
+.finanza-auto-tag {
+    display: inline-block;
+    background: var(--color-primary);
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.12rem 0.45rem;
+    border-radius: 4px;
+    margin-left: 0.4rem;
+    letter-spacing: 0.05em;
+    vertical-align: middle;
 }
 
 /* Responsive finanzas */
