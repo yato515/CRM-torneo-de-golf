@@ -27,11 +27,31 @@ async function cerrarSesion() {
 }
 window.cerrarSesion = cerrarSesion;
 
-// Exportar Excel pasando el token de la sesión
+// Exportar Excel — envía el token en el header Authorization (no en la URL)
+// y descarga el archivo vía blob. Así el JWT no queda en historial ni logs.
 async function exportarExcel() {
     const { data: { session: s } } = await supabase.auth.getSession();
-    if (!s) return alert('Sesión expirada, vuelve a iniciar sesión');
-    window.location.href = `/api/exportar/patrocinadores?token=${encodeURIComponent(s.access_token)}`;
+    if (!s) return mostrarToast('Sesión expirada, vuelve a iniciar sesión', 'error');
+
+    try {
+        const resp = await fetch('/api/exportar/patrocinadores', {
+            headers: { Authorization: `Bearer ${s.access_token}` }
+        });
+        if (!resp.ok) throw new Error('Export falló: ' + resp.status);
+
+        const blob = await resp.blob();
+        const url  = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'patrocinadores_2025.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error('Error exportando:', e);
+        mostrarToast('Error al exportar Excel', 'error');
+    }
 }
 window.exportarExcel = exportarExcel;
 
@@ -410,7 +430,7 @@ function renderFilteredPatrocinadores() {
             ? `<span
                     class="celda-clicable"
                     title="Ver descripción de especie"
-                    onclick="abrirModalEspecie('${escapeHtml(p.descripcion_especie).replace(/'/g, '&#39;')}', '${escapeHtml(p.patrocinador)}')"
+                    onclick="abrirModalEspecie(${p.id}, 'especie')"
                >${especieMonto > 0 ? formatCurrency(especieMonto) : '<span class="monto-cero">—</span>'} 📦</span>`
             : formatCurrencyMuted(especieMonto);
 
@@ -423,7 +443,7 @@ function renderFilteredPatrocinadores() {
             ? `<button
                     class="btn-descripcion"
                     title="Ver descripción completa"
-                    onclick="abrirModalEspecie('${escapeHtml(p.descripcion).replace(/'/g, '&#39;')}', '${escapeHtml(p.patrocinador)} — Descripción')"
+                    onclick="abrirModalEspecie(${p.id}, 'descripcion')"
                >📝 Ver</button>`
             : `<span class="monto-cero">—</span>`;
 
@@ -440,11 +460,11 @@ function renderFilteredPatrocinadores() {
                 <td>${celdaDescripcion}</td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn-action btn-contactos_patrocinador" onclick="abrirContactosModal(${p.id}, '${escapeHtml(p.patrocinador)}')" title="Ver contactos">
+                        <button class="btn-action btn-contactos_patrocinador" onclick="abrirContactosModal(${p.id})" title="Ver contactos">
                             📞 <span class="badge-count">${count}</span>
                         </button>
                         <button class="btn-action btn-edit" onclick="editarPatrocinador(${p.id})" title="Editar">✏️</button>
-                        <button class="btn-action btn-delete" onclick="eliminarPatrocinador(${p.id}, '${escapeHtml(p.patrocinador)}')" title="Eliminar">🗑️</button>
+                        <button class="btn-action btn-delete" onclick="eliminarPatrocinador(${p.id})" title="Eliminar">🗑️</button>
                     </div>
                 </td>
             </tr>`;
@@ -563,7 +583,9 @@ async function editarPatrocinador(id) {
     document.getElementById('modalPatrocinador').style.display = 'flex';
 }
 
-async function eliminarPatrocinador(id, nombre) {
+async function eliminarPatrocinador(id) {
+    const p = patrocinadores.find(x => Number(x.id) === Number(id));
+    const nombre = p ? p.patrocinador : 'este patrocinador';
     if (!confirm(`¿Estás seguro de que deseas eliminar a "${nombre}"?`)) return;
 
     try {
@@ -661,7 +683,9 @@ async function eliminarCategoria(id) {
 // ============================================
 // CRUD: CONTACTOS (sin cambios)
 // ============================================
-async function abrirContactosModal(patrocinadorId, patrocinadorNombre) {
+async function abrirContactosModal(patrocinadorId) {
+    const p = patrocinadores.find(x => x.id === patrocinadorId);
+    const patrocinadorNombre = p ? p.patrocinador : '';
     document.getElementById('contactoPatrocinadorId').value = patrocinadorId;
     document.getElementById('modalContactosTitle').textContent = `Contactos - ${patrocinadorNombre}`;
     document.getElementById('formContacto').reset();
@@ -802,10 +826,19 @@ function parsearMoneda(str) {
     return parseFloat(String(str).replace(/[^0-9.]/g, '')) || 0;
 }
 
-// Modal descripción de especie (solo lectura)
-function abrirModalEspecie(descripcion, nombrePatrocinador) {
-    document.getElementById('modalEspecieTitulo').textContent = `Especie — ${nombrePatrocinador}`;
-    document.getElementById('modalEspecieTexto').textContent = descripcion || 'Sin descripción.';
+// Modal de texto (solo lectura). Recibe el ID y el tipo ('especie' | 'descripcion')
+// y busca el contenido en memoria — NO recibe texto del usuario en el onclick (anti-XSS).
+function abrirModalEspecie(patrocinadorId, tipo) {
+    const p = patrocinadores.find(x => x.id === patrocinadorId);
+    if (!p) return;
+
+    const esEspecie = tipo === 'especie';
+    const texto  = esEspecie ? p.descripcion_especie : p.descripcion;
+    const titulo = esEspecie ? `Especie — ${p.patrocinador}` : `${p.patrocinador} — Descripción`;
+
+    // textContent escapa automáticamente cualquier HTML/script malicioso
+    document.getElementById('modalEspecieTitulo').textContent = titulo;
+    document.getElementById('modalEspecieTexto').textContent = texto || 'Sin descripción.';
     document.getElementById('modalEspecie').style.display = 'flex';
 }
 
@@ -880,8 +913,8 @@ function cambiarTab(tab) {
     document.getElementById('tab-btn-crm').classList.toggle('active',      tab === 'crm');
     document.getElementById('tab-btn-finanzas').classList.toggle('active',  tab === 'finanzas');
 
-    // Mostrar/ocultar botones del header según pestaña
-    document.getElementById('headerAcciones').style.display = tab === 'crm' ? 'flex' : 'none';
+    // Los botones del header se muestran en ambas pestañas
+    document.getElementById('headerAcciones').style.display = 'flex';
 }
 
 // ============================================
@@ -902,6 +935,33 @@ function getTotalNCTransferencias() {
     return patrocinadores.reduce((sum, p) =>
         sum + (Number(p.nota_credito) || 0) + (Number(p.monto_transferencia) || 0)
     , 0);
+}
+
+// PENDIENTE = suma de todo lo que falta por transferir
+function getPendiente() {
+    return patrocinadores.reduce((sum, p) =>
+        sum + (Number(p.falta_transferir) || 0)
+    , 0);
+}
+
+// YA INGRESADO (réplica de la fórmula del Excel =G74+E74+D78+D80+D82):
+//   G74 = transferencias ya recibidas en efectivo = Σtransferencia − Σfalta
+//   E74 = Σ nota de crédito
+//   D78/D80/D82 = jugadores inscripciones + cena jugadores + activaciones (manuales)
+// Excluye: especie (no es efectivo), pago previo cenas y quizz (aún no cobrados)
+function getYaIngresado() {
+    const transferRecibido = patrocinadores.reduce((sum, p) =>
+        sum + (Number(p.monto_transferencia) || 0) - (Number(p.falta_transferir) || 0)
+    , 0);
+    const notaCredito = patrocinadores.reduce((sum, p) =>
+        sum + (Number(p.nota_credito) || 0)
+    , 0);
+
+    return transferRecibido
+        + notaCredito
+        + getFinanzaValor('jugadores_inscripciones')
+        + getFinanzaValor('ingresos_cena_jugadores')
+        + getFinanzaValor('ingresos_activaciones');
 }
 
 async function cargarFinanzas() {
@@ -932,6 +992,10 @@ function renderFinanzas() {
     const totalManual      = FINANZAS_EDITABLES.reduce((sum, f) => sum + getFinanzaValor(f.clave), 0);
     const totalPrometido   = totalNCTransf + totalManual;
     const diferencia       = totalPrometido - meta;
+
+    // Tarjetas destacadas: Ya ingresado y Pendiente
+    document.getElementById('fin-ya_ingresado').textContent = formatCurrency(getYaIngresado());
+    document.getElementById('fin-pendiente').textContent    = formatCurrency(getPendiente());
 
     // Tarjeta meta
     document.getElementById('fin-meta_recaudacion').textContent = formatCurrency(meta);

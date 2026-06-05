@@ -4,9 +4,10 @@ const { createClient } = require('@supabase/supabase-js');
 
 const router = express.Router();
 
-// Middleware: valida que el request venga de un usuario autenticado
+// Middleware: valida que el request venga de un usuario autenticado.
+// Solo acepta el token por header Authorization (nunca por URL, para no filtrarlo).
 async function requireAuth(req, res, next) {
-    const token = req.query.token || req.headers.authorization?.replace('Bearer ', '');
+    const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
         return res.status(401).json({ error: 'No autenticado' });
     }
@@ -46,6 +47,12 @@ router.get('/exportar/patrocinadores', requireAuth, async (req, res) => {
 
         if (errCon) throw errCon;
 
+        const { data: finanzas, error: errFin } = await supabase
+            .from('finanzas_2025')
+            .select('*');
+
+        if (errFin) throw errFin;
+
         const workbook = new ExcelJS.Workbook();
 
         // --- Hoja 1: Patrocinadores ---
@@ -67,7 +74,7 @@ router.get('/exportar/patrocinadores', requireAuth, async (req, res) => {
         sheet1.getRow(1).fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'FF2563EB' },
+            fgColor: { argb: 'FF1A1A1A' },
         };
         sheet1.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
@@ -90,6 +97,83 @@ router.get('/exportar/patrocinadores', requireAuth, async (req, res) => {
             sheet1.getColumn(key).numFmt = '$#,##0.00';
         });
 
+        // --- Fila de TOTALES de las columnas numéricas ---
+        const sumTransfer = patrocinadores.reduce((s, p) => s + (p.monto_transferencia || 0), 0);
+        const sumNota     = patrocinadores.reduce((s, p) => s + (p.nota_credito || 0), 0);
+        const sumEspecie  = patrocinadores.reduce((s, p) => s + (p.monto_especie || 0), 0);
+        const sumPagado   = patrocinadores.reduce((s, p) => s + (p.monto_pagado_total || 0), 0);
+        const sumFalta    = patrocinadores.reduce((s, p) => s + (p.falta_transferir || 0), 0);
+
+        const totalRow = sheet1.addRow({
+            patrocinador:        'TOTALES',
+            monto_transferencia: sumTransfer,
+            nota_credito:        sumNota,
+            monto_especie:       sumEspecie,
+            monto_pagado_total:  sumPagado,
+            falta_transferir:    sumFalta,
+        });
+        totalRow.font = { bold: true };
+        totalRow.eachCell(cell => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8E5DE' } };
+        });
+
+        // --- RESUMEN FINANCIERO (debajo de los patrocinadores) ---
+        const fv = (clave) => {
+            const f = (finanzas || []).find(x => x.clave === clave);
+            return f ? (f.valor || 0) : 0;
+        };
+
+        const totalNCTransf    = sumNota + sumTransfer;
+        const pendiente        = sumFalta;
+        const transferRecibido = sumTransfer - sumFalta;
+        const yaIngresado      = transferRecibido + sumNota
+            + fv('jugadores_inscripciones') + fv('ingresos_cena_jugadores') + fv('ingresos_activaciones');
+        const totalManual      = fv('jugadores_inscripciones') + fv('pago_previo_cenas')
+            + fv('ingresos_cena_jugadores') + fv('ingresos_cena_quizz') + fv('ingresos_activaciones');
+        const totalPrometido   = totalNCTransf + totalManual;
+        const meta             = fv('meta_recaudacion');
+        const diferencia       = totalPrometido - meta;
+
+        sheet1.addRow([]); // separador
+        sheet1.addRow([]);
+
+        const tituloFin = sheet1.addRow(['', 'RESUMEN FINANCIERO 2025']);
+        tituloFin.getCell(2).font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+        tituloFin.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A1A1A' } };
+
+        // Helper para agregar una fila de resumen: etiqueta en B, valor en D
+        function addFin(label, value, opts = {}) {
+            const row = sheet1.addRow(['', label, '', value]);
+            const labelCell = row.getCell(2);
+            const valueCell = row.getCell(4);
+            valueCell.numFmt = '$#,##0.00';
+            labelCell.font = { bold: !!opts.bold };
+            valueCell.font = { bold: !!opts.bold };
+            if (opts.fill) {
+                [labelCell, valueCell].forEach(c => {
+                    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: opts.fill } };
+                    c.font = { bold: true, color: { argb: opts.textColor || 'FF000000' } };
+                });
+            }
+            return row;
+        }
+
+        addFin('Meta Recaudación', meta, { bold: true });
+        addFin('Total NC + Transferencias', totalNCTransf);
+        addFin('Jugadores Inscripciones Portal', fv('jugadores_inscripciones'));
+        addFin('Pago Previo de Acceso Cenas', fv('pago_previo_cenas'));
+        addFin('Ingresos Dia de Cena Jugadores', fv('ingresos_cena_jugadores'));
+        addFin('Ingresos Cena Quizz It', fv('ingresos_cena_quizz'));
+        addFin('Ingresos Activaciones', fv('ingresos_activaciones'));
+        addFin('TOTAL PROMETIDO', totalPrometido, { bold: true, fill: 'FFD1FAE5', textColor: 'FF065F46' });
+        addFin('YA INGRESADO', yaIngresado, { fill: 'FF22C55E', textColor: 'FFFFFFFF' });
+        addFin('PENDIENTE', pendiente, { fill: 'FFF59E0B', textColor: 'FFFFFFFF' });
+        addFin(
+            diferencia >= 0 ? 'META SUPERADA' : 'FALTA PARA LA META',
+            Math.abs(diferencia),
+            { fill: diferencia >= 0 ? 'FF15803D' : 'FFDC2626', textColor: 'FFFFFFFF' }
+        );
+
         // --- Hoja 2: Contactos ---
         const sheet2 = workbook.addWorksheet('Contactos');
         sheet2.columns = [
@@ -104,7 +188,7 @@ router.get('/exportar/patrocinadores', requireAuth, async (req, res) => {
         sheet2.getRow(1).fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'FF15803D' },
+            fgColor: { argb: 'FFB89469' },
         };
         sheet2.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
